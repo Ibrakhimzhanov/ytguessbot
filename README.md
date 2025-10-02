@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Telegram Course Bot - Next.js
 
-## Getting Started
+Telegram бот для продажи курсов, переписанный с Python на Next.js.
 
-First, run the development server:
+## Технологии
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Next.js 14** - веб-фреймворк
+- **TypeScript** - типизация
+- **Prisma** - ORM для работы с базой данных
+- **PostgreSQL** - база данных (запущена через Docker)
+- **Telegraf** - библиотека для работы с Telegram Bot API
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Настройка
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **База данных уже запущена через Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Установите зависимости**
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. **Настройте переменные окружения**
+   Обновите `.env` файл с вашими данными:
+   ```env
+   BOT_TOKEN=ваш_токен_бота
+   PAYME_ID=ваш_payme_id
+   PAYME_KEY=ваш_payme_key
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Примените миграции базы данных**
+   ```bash
+   npm run db:push
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Запустите проект**
+   ```bash
+   npm run dev
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Структура проекта
 
-## Deploy on Vercel
+- `src/lib/prisma.ts` - настройка Prisma клиента
+- `src/lib/telegram.ts` - настройка Telegram бота
+- `src/lib/bot-handlers.ts` - обработчики команд бота
+- `src/app/api/webhook/route.ts` - webhook для получения обновлений от Telegram
+- `src/app/api/bot/route.ts` - API для проверки статуса бота
+- `prisma/schema.prisma` - схема базы данных
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Возможности бота
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- ✅ Регистрация пользователей
+- ✅ Сбор контактной информации
+- ✅ Интеграция с платежной системой Payme
+- ✅ Административные команды
+- ✅ Система статистики
+- ✅ Поддержка лотереи (структура готова)
+
+## API Endpoints
+
+- `GET /api/bot` - статус бота и подключения к БД
+- `POST /api/webhook` - webhook для получения обновлений от Telegram
+- `GET /api/webhook` - запуск бота в режиме разработки
+
+## Запуск в production
+
+1. Настройте webhook в Telegram:
+   ```bash
+   curl -F "url=https://yourdomain.com/api/webhook" \
+        https://api.telegram.org/bot<BOT_TOKEN>/setWebhook
+   ```
+
+2. Запустите проект:
+   ```bash
+   npm run build
+   npm run start
+   ```
