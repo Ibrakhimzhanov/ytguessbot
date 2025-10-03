@@ -19,14 +19,29 @@ export function generatePaymeCheckoutUrl(
     ? 'https://checkout.test.paycom.uz'
     : 'https://checkout.paycom.uz'
 
-  // Кодируем параметры в Base64 как требует Payme
-  const params: Record<string, any> = {
-    m: merchantId,
-    a: amount,
-    ac: accountParams
+  // Формируем строку параметров в формате Payme: key=value;key2=value2
+  // Пример: m=merchant_id;ac.order_id=123;a=500
+  const parts: string[] = []
+  
+  // Добавляем merchant ID
+  parts.push(`m=${merchantId}`)
+  
+  // Добавляем account параметры с префиксом ac.
+  for (const [key, value] of Object.entries(accountParams)) {
+    parts.push(`ac.${key}=${value}`)
   }
-
-  const encoded = Buffer.from(JSON.stringify(params)).toString('base64')
+  
+  // Добавляем сумму
+  parts.push(`a=${amount}`)
+  
+  // Объединяем через точку с запятой
+  const paramsString = parts.join(';')
+  
+  // Кодируем в Base64
+  const encoded = Buffer.from(paramsString).toString('base64')
+  
+  console.log('🔗 Payme URL params:', paramsString)
+  console.log('🔗 Payme URL base64:', encoded)
   
   return `${baseUrl}/${encoded}`
 }

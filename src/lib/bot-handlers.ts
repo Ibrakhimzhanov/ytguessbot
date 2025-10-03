@@ -18,9 +18,14 @@ import {
   handleGenerateRandomReceipt
 } from './admin/admin-handlers'
 
-const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '2500000') // цена в тийинах (25,000 сум)
+const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000') // цена в тийинах (2,500,000 сум)
 const PAYME_MERCHANT_ID = process.env.PAYME_X_AUTH?.split(':')[0] || ''
 const IS_TEST_MODE = process.env.NODE_ENV !== 'production'
+
+// Debug logging
+console.log('💰 COURSE_PRICE:', COURSE_PRICE, 'тийинов =', (COURSE_PRICE / 100).toLocaleString(), 'сум')
+console.log('🏪 PAYME_MERCHANT_ID:', PAYME_MERCHANT_ID)
+console.log('🧪 IS_TEST_MODE:', IS_TEST_MODE)
 
 // Обработчики команд и сообщений
 bot.command('buy', async (ctx: BotContext) => {
