@@ -1,24 +1,29 @@
-import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+// Важно: сначала импортируем bot-handlers, чтобы зарегистрировать все обработчики
+import { bot } from '@/lib/bot-handlers'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json()
+    
+    console.log('📨 Webhook received:', JSON.stringify(body, null, 2))
+    
+    // Обработка webhook от Telegram
+    await bot.handleUpdate(body)
+    
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('❌ Webhook error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
 
 export async function GET() {
-  try {
-    // Простая проверка подключения к БД
-    const userCount = await prisma.user.count()
-    
-    return NextResponse.json({ 
-      status: 'Bot is running',
-      database: 'Connected',
-      users: userCount,
-      timestamp: new Date().toISOString()
-    })
-  } catch (error) {
-    console.error('Database connection error:', error)
-    return NextResponse.json({ 
-      status: 'Bot is running',
-      database: 'Error connecting',
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
-  }
+  return NextResponse.json({ 
+    status: 'ok',
+    message: 'Telegram Bot Webhook Endpoint',
+    timestamp: new Date().toISOString()
+  })
 }
