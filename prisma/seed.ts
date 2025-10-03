@@ -133,7 +133,7 @@ async function main() {
       const payment = await prisma.payment.create({
         data: {
           userId: user.id,
-          amount: 1100000, // 11,000 сум
+          amount: 2500000, // 25,000 сум
           currency: 'UZS',
           status: 'PAID',
           paymeId: `mock_receipt_${Math.floor(100000 + Math.random() * 900000)}`,
