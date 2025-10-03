@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { bot } from '@/lib/telegram'
 
 // Merchant API методы, которые может вызывать Payme
 enum MerchantMethod {
@@ -232,6 +233,21 @@ async function performTransaction(params: any) {
     data: { isPaid: true }
   })
 
+  // Уведомляем пользователя в Telegram
+  try {
+    await bot.telegram.sendMessage(
+      payment.user.telegramId.toString(),
+      `🎉 Поздравляем! Ваш платеж успешно подтвержден!\n\n` +
+      `✅ Доступ к курсу активирован\n` +
+      `📋 Номер заказа: #${payment.orderNumber}\n` +
+      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n\n` +
+      `📚 Используйте команду /mycourse для доступа к материалам курса.\n\n` +
+      `🎓 Приятного обучения!`
+    )
+  } catch (error) {
+    console.error('Failed to notify user via Telegram:', error)
+  }
+
   return {
     perform_time: now.getTime(),
     transaction: payment.orderNumber.toString(),
@@ -277,6 +293,25 @@ async function cancelTransaction(params: any) {
       where: { id: payment.userId },
       data: { isPaid: false }
     })
+  }
+
+  // Уведомляем пользователя об отмене
+  const user = await prisma.user.findUnique({
+    where: { id: payment.userId }
+  })
+
+  if (user) {
+    try {
+      await bot.telegram.sendMessage(
+        user.telegramId.toString(),
+        `❌ Платеж был отменен.\n\n` +
+        `📋 Номер заказа: #${payment.orderNumber}\n` +
+        `Причина: ${reason || 'Не указана'}\n\n` +
+        `Если это произошло по ошибке, вы можете попробовать снова, используя команду /buy`
+      )
+    } catch (error) {
+      console.error('Failed to notify user about cancellation:', error)
+    }
   }
 
   return {

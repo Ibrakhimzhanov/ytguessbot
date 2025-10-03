@@ -4,7 +4,7 @@ dotenv.config()
 import { bot, BotContext } from './telegram'
 import { prisma } from './prisma'
 import { Markup } from 'telegraf'
-import { createMockPaymeService } from './payme/payme-mock'
+import { generatePaymeCheckoutUrl } from './payme/payme-utils'
 import { hasAdminAccess, getRoleText } from './admin/roles'
 import {
   showAdminPanel,
@@ -18,8 +18,9 @@ import {
   handleGenerateRandomReceipt
 } from './admin/admin-handlers'
 
-const mockPayme = createMockPaymeService()
 const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '2500000') // цена в тийинах (25,000 сум)
+const PAYME_MERCHANT_ID = process.env.PAYME_X_AUTH?.split(':')[0] || ''
+const IS_TEST_MODE = process.env.NODE_ENV !== 'production'
 
 // Обработчики команд и сообщений
 bot.command('buy', async (ctx: BotContext) => {
@@ -41,7 +42,7 @@ bot.command('buy', async (ctx: BotContext) => {
     }
 
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('💳 Оплатить через Payme (ТЕСТ)', 'pay_payme')],
+      [Markup.button.callback('💳 Оплатить через Payme', 'pay_payme')],
       [Markup.button.callback('📞 Связаться с админом', 'contact_admin')]
     ])
 
@@ -52,7 +53,6 @@ bot.command('buy', async (ctx: BotContext) => {
       `• Практические задания\n` +
       `• Поддержка куратора\n` +
       `• Сертификат об окончании\n\n` +
-      `⚠️ Тестовый режим оплаты активен\n\n` +
       `Выберите способ оплаты:`,
       keyboard
     )
@@ -299,43 +299,33 @@ bot.action('pay_payme', async (ctx: BotContext) => {
     })
 
     console.log(`🔵 pay_payme: Платеж создан #${payment.orderNumber}`)
-    console.log('🔵 Creating mock payment receipt...')
 
-    // Создаем чек через mock Payme
-    const { receipt } = await mockPayme.createCourseReceipt(
-      user.id,
-      payment.orderNumber,
-      COURSE_PRICE
+    // Генерируем URL для оплаты через Payme Checkout
+    const paymentUrl = generatePaymeCheckoutUrl(
+      PAYME_MERCHANT_ID,
+      {
+        order_id: payment.orderNumber.toString(),
+        user_id: user.id
+      },
+      COURSE_PRICE,
+      IS_TEST_MODE
     )
     
-    console.log(`🔵 pay_payme: Mock чек создан ${receipt._id}`)
-
-    // Обновляем платеж с ID чека
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: { paymeId: receipt._id }
-    })
-
-    // Формируем ссылку на mock страницу оплаты
-    const paymentUrl = mockPayme.getMockPaymentUrl(
-      receipt._id,
-      user.id,
-      payment.orderNumber
-    )
+    console.log(`🔵 pay_payme: Payme checkout URL сгенерирован`)
     
     const keyboard = Markup.inlineKeyboard([
+      [Markup.button.url('💳 Перейти к оплате', paymentUrl)],
       [Markup.button.callback('✅ Я оплатил', `check_payment_${payment.id}`)]
     ])
 
     await ctx.reply(
-      `💳 **Оплата курса (Тестовый режим)**\n\n` +
+      `💳 **Оплата курса через Payme**\n\n` +
       `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n` +
       `📱 Телефон: ${user.phoneNumber}\n` +
       `📋 Номер заказа: #${payment.orderNumber}\n\n` +
-      `⚠️ Это тестовая оплата - реальные деньги не списываются\n\n` +
-      `🔗 **Откройте эту ссылку в браузере для оплаты:**\n` +
-      `${paymentUrl}\n\n` +
-      `После оплаты нажмите кнопку "✅ Я оплатил" для проверки статуса.`,
+      `🔒 Безопасная оплата через Payme\n\n` +
+      `Нажмите кнопку "💳 Перейти к оплате" для оплаты через Payme.\n\n` +
+      `После успешной оплаты вы получите уведомление, и доступ к курсу будет автоматически активирован.`,
       keyboard
     )
 
