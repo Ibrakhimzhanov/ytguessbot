@@ -10,13 +10,12 @@ export async function GET(req: NextRequest) {
 
     // Генерируем тестовый URL
     const testOrderId = '999'
-    const testUserId = 'test-user-id-123'
 
     const paymentUrl = generatePaymeCheckoutUrl(
       PAYME_MERCHANT_ID,
       {
-        order_id: testOrderId,
-        user_id: testUserId
+        order_id: testOrderId
+        // user_id убран - Payme не требует его
       },
       COURSE_PRICE,
       IS_TEST_MODE
@@ -52,16 +51,14 @@ export async function GET(req: NextRequest) {
         PAYME_X_AUTH: process.env.PAYME_X_AUTH ? '✅ Установлен' : '❌ Не найден'
       },
       test_data: {
-        order_id: testOrderId,
-        user_id: testUserId
+        order_id: testOrderId
       },
       generated_url: paymentUrl,
       decoded_params: params,
       verification: {
         merchant_id_correct: params.m === PAYME_MERCHANT_ID,
-        amount_correct: params.a === COURSE_PRICE,
-        order_id_correct: params.ac?.order_id === testOrderId,
-        user_id_correct: params.ac?.user_id === testUserId
+        amount_correct: params.a === COURSE_PRICE.toString(),
+        order_id_correct: params.ac?.order_id === testOrderId
       }
     })
   } catch (error) {

@@ -309,8 +309,8 @@ bot.action('pay_payme', async (ctx: BotContext) => {
     const paymentUrl = generatePaymeCheckoutUrl(
       PAYME_MERCHANT_ID,
       {
-        order_id: payment.orderNumber.toString(),
-        user_id: user.id
+        order_id: payment.orderNumber.toString()
+        // user_id убран - Payme не требует его
       },
       COURSE_PRICE,
       IS_TEST_MODE
