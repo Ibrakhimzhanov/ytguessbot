@@ -1,0 +1,14 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:15
+    container_name: telegram_course_bot_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: telegram_course_bot
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data

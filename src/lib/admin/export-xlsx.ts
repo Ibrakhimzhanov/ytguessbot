@@ -32,12 +32,12 @@ export async function generateUsersXLSX(): Promise<Buffer> {
 
   // Настройка колонок
   worksheet.columns = [
+    { header: 'Номер заказа', key: 'orderNumber', width: 15 },
     { header: 'User ID', key: 'userId', width: 40 },
     { header: 'Имя', key: 'name', width: 25 },
     { header: 'Телефон (маска)', key: 'phone', width: 20 },
     { header: 'Username', key: 'username', width: 20 },
-    { header: 'Дата оплаты', key: 'paidAt', width: 20 },
-    { header: 'Статус', key: 'status', width: 15 }
+    { header: 'Дата оплаты', key: 'paidAt', width: 20 }
   ]
 
   // Стилизация заголовков
@@ -49,8 +49,9 @@ export async function generateUsersXLSX(): Promise<Buffer> {
   }
   worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' }
 
-  // Получаем всех пользователей
+  // Получаем только пользователей со статусом PAID
   const users = await prisma.user.findMany({
+    where: { isPaid: true },
     include: {
       payments: {
         where: { status: 'PAID' },
@@ -66,14 +67,14 @@ export async function generateUsersXLSX(): Promise<Buffer> {
     const lastPayment = user.payments[0]
     
     worksheet.addRow({
+      orderNumber: lastPayment?.orderNumber || '-',
       userId: user.id,
       name: user.fullName || user.firstName || '-',
       phone: maskPhone(user.phoneNumber || ''),
       username: user.username ? `@${user.username}` : '-',
       paidAt: lastPayment?.completedAt 
         ? lastPayment.completedAt.toLocaleString('ru-RU') 
-        : '-',
-      status: user.isPaid ? '✅ Оплачено' : '⏳ Не оплачено'
+        : '-'
     })
   }
 

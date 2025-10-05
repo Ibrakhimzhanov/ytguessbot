@@ -1,5 +1,4 @@
 import { Telegraf, Context, Markup } from 'telegraf'
-import { Update } from 'telegraf/types'
 import dotenv from 'dotenv'
 import { hasAdminAccess, getRoleText } from './admin/roles'
 
@@ -26,27 +25,34 @@ bot.start((ctx) => {
   if (isAdmin) {
     const role = getRoleText(telegramId!)
     const keyboard = Markup.keyboard([
-      ['🔧 Админ-панель'],
-      ['📚 Купить курс', '💰 Проверить оплату'],
-      ['📞 Контакты', '📋 О курсе']
+      ['🔧 Admin panel'],
+      ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
+      ['📞 Kontaktlar', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(
-      `Добро пожаловать, ${role}! 🎓\n\n` +
-      `У вас есть доступ к админ-панели.\n\n` +
-      `Выберите действие:`,
+      `🎬 Xush kelibsiz, ${role}! Bu YouTube Academiyasi ning rasmiy boti. Ekspert Elnur Alimov ning mualliflik kursi 🎬\n\n` +
+      `Bu yerda siz YouTubeni noldan professional darajagacha o'rganish va  monetizatsiyaga chiqishga yordam beradigan kursga to'liq kirish huquqini sotib olishingiz mumkin.\n\n` +
+      `Bizning maqsadimiz eng qulay narxda sizga kanal rivojlantirish va YouTube'da daromadni oshirish uchun barcha vositalar va bilimlarni berish 🚀\n\n` +
+      `📺 Bizning kurs haqida to'liq videomizni tomosha qiling:\n` +
+      `https://www.youtube.com/watch?v=6BaVB8pU3Lw\n\n` +
+      `Sizda admin panelga kirish huquqi bor.\n\n` +
+      `Kerakli bo'limni tanlang:`,
       keyboard
     )
   } else {
     const keyboard = Markup.keyboard([
-      ['📚 Купить курс', '💰 Проверить оплату'],
-      ['📞 Контакты', '📋 О курсе']
+      ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
+      ['📞 Kontaktlar', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(
-      `Добро пожаловать в бот курса! 🎓\n\n` +
-      `Здесь вы можете приобрести доступ к обучающему курсу.\n\n` +
-      `Выберите действие:`,
+      `🎬 Xush kelibsiz, aziz do'stim! Bu YouTube Academiyasi ning rasmiy boti. Ekspert Elnur Alimov ning mualliflik kursi 🎬\n\n` +
+      `Bu yerda siz YouTubeni noldan professional darajagacha o'rganish va barqaror monetizatsiyaga chiqishga yordam beradigan kursga to'liq kirish huquqini sotib olishingiz mumkin.\n\n` +
+      `Bizning maqsadimiz — eng qulay narxda sizga kanal rivojlantirish va YouTube'da daromadni oshirish uchun barcha vositalar va bilimlarni berish 🚀\n\n` +
+      `📺 Bizning kurs haqida to'liq videomizni tomosha qiling:\n` +
+      `https://www.youtube.com/watch?v=6BaVB8pU3Lw\n\n` +
+      `Kerakli bo'limni tanlang:`,
       keyboard
     )
   }
@@ -54,14 +60,14 @@ bot.start((ctx) => {
 
 bot.help((ctx) => {
   ctx.reply(
-    `📋 **Доступные команды:**\n\n` +
-    `/start - Начать работу с ботом\n` +
-    `/help - Показать это сообщение\n` +
-    `/buy - Купить курс\n` +
-    `/status - Проверить статус оплаты\n` +
-    `/mycourse - Доступ к материалам курса\n\n` +
-    `💡 **Для администраторов:**\n` +
-    `/admin_stats - Статистика бота`
+    `📋 Mavjud buyruqlar:\n\n` +
+    `/start - Bot bilan ishlashni boshlash\n` +
+    `/help - Ushbu xabarni ko'rsatish\n` +
+    `/buy - Kursni sotib olish\n` +
+    `/status - To'lov holatini tekshirish\n` +
+    `/mycourse - Kurs materiallariga kirish\n\n` +
+    `💡 Administratorlar uchun:\n` +
+    `/admin_stats - Bot statistikasi`
   )
 })
 

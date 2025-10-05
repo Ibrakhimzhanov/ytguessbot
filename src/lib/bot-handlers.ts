@@ -1,4 +1,4 @@
-import dotenv from 'dotenv'
+﻿import dotenv from 'dotenv'
 dotenv.config()
 
 import { bot, BotContext } from './telegram'
@@ -9,61 +9,54 @@ import { hasAdminAccess, getRoleText } from './admin/roles'
 import {
   showAdminPanel,
   handleExportXLSX,
-  handleLotteryControl,
-  handleLotteryStart,
-  handleLotteryStop,
-  handleSelectWinner,
-  handleLotteryHistory,
-  handleCheckUserId,
-  handleGenerateRandomReceipt
 } from './admin/admin-handlers'
 
-const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000') // цена в тийинах (2,500,000 сум)
+const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000') // tiyin hisobida narx (2,500,000 so'm)
 const PAYME_MERCHANT_ID = process.env.PAYME_X_AUTH?.split(':')[0] || ''
 const IS_TEST_MODE = process.env.NODE_ENV !== 'production'
 
 // Debug logging
-console.log('💰 COURSE_PRICE:', COURSE_PRICE, 'тийинов =', (COURSE_PRICE / 100).toLocaleString(), 'сум')
+console.log('💰 COURSE_PRICE:', COURSE_PRICE, 'tiyin =', (COURSE_PRICE / 100).toLocaleString(), 'so\'m')
 console.log('🏪 PAYME_MERCHANT_ID:', PAYME_MERCHANT_ID)
 console.log('🧪 IS_TEST_MODE:', IS_TEST_MODE)
 
-// Обработчики команд и сообщений
+// Buyruqlar va xabarlar handlerlari
 bot.command('buy', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   if (!telegramId) return
 
   try {
-    // Проверяем, не оплачен ли уже курс
+    // Kurs allaqachon to'langanligini tekshirish
     const user = await prisma.user.findUnique({
       where: { telegramId: BigInt(telegramId) }
     })
 
     if (user?.isPaid) {
       await ctx.reply(
-        '✅ Вы уже оплатили курс!\n\n' +
-        'Используйте команду /mycourse для доступа к материалам.'
+        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
       return
     }
 
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('💳 Оплатить через Payme', 'pay_payme')],
-      [Markup.button.callback('📞 Связаться с админом', 'contact_admin')]
+      [Markup.button.callback('💳 Payme orqali to\'lash', 'pay_payme')],
+      [Markup.button.callback('📞 Admin bilan bog\'lanish', 'contact_admin')]
     ])
 
     await ctx.reply(
-      `💰 Стоимость курса: ${(COURSE_PRICE / 100).toLocaleString()} сум\n\n` +
-      `📚 В курс входит:\n` +
-      `• Все видео уроки\n` +
-      `• Практические задания\n` +
-      `• Поддержка куратора\n` +
-      `• Сертификат об окончании\n\n` +
-      `Выберите способ оплаты:`,
+      `💰 Kurs narxi: ${(COURSE_PRICE / 100).toLocaleString()} so'm\n\n` +
+      `📚 Kursga kiradi:\n` +
+      `• Barcha video darslar\n` +
+      `• Amaliy topshiriqlar\n` +
+      `• Kurator yordami\n` +
+      `• Tugatish sertifikati\n\n` +
+      `To'lov usulini tanlang:`,
       keyboard
     )
   } catch (error) {
     console.error('Error in /buy command:', error)
-    await ctx.reply('❌ Произошла ошибка. Попробуйте позже.')
+    await ctx.reply('❌ Xatolik yuz berdi. Keyinroq urinib ko\'ring.')
   }
 })
 
@@ -82,38 +75,38 @@ bot.command('status', async (ctx: BotContext) => {
     })
 
     if (!user) {
-      await ctx.reply('Вы еще не зарегистрированы в системе. Используйте /start для регистрации.')
+      await ctx.reply('Siz hali tizimda ro\'yxatdan o\'tmagansiz. Ro\'yxatdan o\'tish uchun /start dan foydalaning.')
       return
     }
 
     const statusIcon = user.isPaid ? '✅' : '❌'
-    const statusText = user.isPaid ? 'Оплачен' : 'Не оплачен'
+    const statusText = user.isPaid ? 'To\'langan' : 'To\'lanmagan'
     
     const lastPayment = user.payments[0]
     let paymentInfo = ''
     
     if (lastPayment) {
-      const date = lastPayment.createdAt.toLocaleDateString('ru-RU')
-      paymentInfo = `\n📋 Последний платеж: #${lastPayment.orderNumber}\n` +
-                   `📅 Дата: ${date}\n` +
-                   `💰 Сумма: ${(lastPayment.amount / 100).toLocaleString()} сум\n` +
-                   `🔖 Статус: ${lastPayment.status === 'PAID' ? '✅ Оплачен' : lastPayment.status === 'PENDING' ? '⏳ Ожидает' : '❌ Отменен'}`
+      const date = lastPayment.createdAt.toLocaleDateString('uz-UZ')
+      paymentInfo = `\n📋 Oxirgi to\'lov: #${lastPayment.orderNumber}\n` +
+                   `📅 Sana: ${date}\n` +
+                   `💰 Summa: ${(lastPayment.amount / 100).toLocaleString()} so\'m\n` +
+                   `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
     }
 
     await ctx.reply(
-      `📊 **Ваш статус**\n\n` +
-      `👤 Имя: ${user.fullName || user.firstName}\n` +
-      `📱 Телефон: ${user.phoneNumber || 'Не указан'}\n` +
-      `${statusIcon} Доступ к курсу: ${statusText}${paymentInfo}\n\n` +
-      (user.isPaid ? '📚 Используйте /mycourse для доступа к материалам' : '💳 Используйте /buy для покупки курса')
+      `📊 Sizning holatingiz\n\n` +
+      `👤 Ism: ${user.fullName || user.firstName}\n` +
+      `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
     )
   } catch (error) {
     console.error('Error checking status:', error)
-    await ctx.reply('Произошла ошибка при проверке статуса.')
+    await ctx.reply('Holatni tekshirishda xatolik yuz berdi.')
   }
 })
 
-// Команда для доступа к курсу
+// Kursga kirish buyrug'i
 bot.command('mycourse', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   if (!telegramId) return
@@ -124,86 +117,86 @@ bot.command('mycourse', async (ctx: BotContext) => {
     })
 
     if (!user) {
-      await ctx.reply('Вы еще не зарегистрированы. Используйте /start для начала.')
+      await ctx.reply('Siz hali ro\'yxatdan o\'tmagansiz. Boshlash uchun /start dan foydalaning.')
       return
     }
 
     if (!user.isPaid) {
       await ctx.reply(
-        '❌ Доступ к курсу не активирован\n\n' +
-        'Для получения доступа к материалам курса необходимо оплатить подписку.\n\n' +
-        '💳 Используйте /buy для покупки курса'
+        '❌ Kursga kirish faollashtirilmagan\n\n' +
+        'Kurs materiallariga kirish uchun obunani to\'lash kerak.\n\n' +
+        '💳 Kursni sotib olish uchun /buy dan foydalaning'
       )
       return
     }
 
-    // Отправляем материалы курса
+    // Kurs materiallarini yuborish
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.url('📺 Видеоуроки', 'https://example.com/videos')],
-      [Markup.button.url('📄 Материалы курса', 'https://example.com/materials')],
-      [Markup.button.url('💬 Чат поддержки', 'https://t.me/support_chat')],
-      [Markup.button.url('📝 Задания', 'https://example.com/tasks')]
+      [Markup.button.url('📺 Video darslar', 'https://example.com/videos')],
+      [Markup.button.url('📄 Kurs materiallari', 'https://example.com/materials')],
+      [Markup.button.url('💬 Qo\'llab-quvvatlash chati', 'https://t.me/support_chat')],
+      [Markup.button.url('📝 Topshiriqlar', 'https://example.com/tasks')]
     ])
 
     await ctx.reply(
-      `🎓 **Добро пожаловать на курс!**\n\n` +
-      `✅ Ваш доступ активирован\n\n` +
-      `📚 Доступные материалы:\n` +
-      `• Видеоуроки - полный курс по программированию\n` +
-      `• Текстовые материалы и шпаргалки\n` +
-      `• Практические задания с проверкой\n` +
-      `• Чат с куратором и другими студентами\n` +
-      `• Сертификат после завершения\n\n` +
-      `Выберите раздел:`,
+      `🎓 Kursga xush kelibsiz!\n\n` +
+      `✅ Sizning kirishingiz faollashtirildi\n\n` +
+      `📚 Mavjud materiallar:\n` +
+      `• Video darslar - dasturlash bo\'yicha to\'liq kurs\n` +
+      `• Matnli materiallar va eslatmalar\n` +
+      `• Tekshiruvchi amaliy topshiriqlar\n` +
+      `• Kurator va boshqa talabalar bilan chat\n` +
+      `• Tugatgandan so\'ng sertifikat\n\n` +
+      `Bo\'limni tanlang:`,
       keyboard
     )
   } catch (error) {
     console.error('Error in /mycourse:', error)
-    await ctx.reply('Произошла ошибка при получении материалов курса.')
+    await ctx.reply('Kurs materiallarini olishda xatolik yuz berdi.')
   }
 })
 
-// Обработчик для запроса номера телефона
-bot.hears('📚 Купить курс', async (ctx: BotContext) => {
+// Telefon raqamini so'rash handleri
+bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
   const keyboard = Markup.keyboard([
-    [Markup.button.contactRequest('📱 Поделиться номером телефона')]
+    [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
   ]).resize()
 
   await ctx.reply(
-    'Для покупки курса нам нужен ваш номер телефона.\n' +
-    'Нажмите кнопку ниже, чтобы поделиться контактом:',
+    'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
+    'Kontaktni ulashish uchun quyidagi tugmani bosing:',
     keyboard
   )
 })
 
-// Обработчик кнопки "Контакты"
-bot.hears('📞 Контакты', async (ctx: BotContext) => {
+// "Aloqa" tugmasi handleri
+bot.hears('📞 Aloqa', async (ctx: BotContext) => {
   await ctx.reply(
-    '📞 **Контакты Call Center:**\n\n' +
-    '☎️ +998 78 113 60 12\n' +
-    '☎️ +998 78 113 60 13\n\n' +
-    '⏰ Режим работы: Пн-Пт, 9:00 - 18:00\n\n'
+    '📞 Call Center:\n\n' +
+    '☎️ +998781136012\n' +
+    '☎️ +998781136013\n\n' +
+    '⏰ Ish vaqti: Dush-Jum, 9:00 - 18:00\n\n'
   )
 })
 
-// Обработчик кнопки "О курсе"
-bot.hears('📋 О курсе', async (ctx: BotContext) => {
+// "Kurs haqida" tugmasi handleri
+bot.hears('📋 Kurs haqida', async (ctx: BotContext) => {
   await ctx.reply(
-    '📚 **О курсе по программированию**\n\n' +
-    '💰 Стоимость: 11,000 сум\n\n' +
-    '📝 **Что входит в курс:**\n' +
-    '• 📹 Видеоуроки (полный курс)\n' +
-    '• 📄 Текстовые материалы и шпаргалки\n' +
-    '• ✍️ Практические задания с проверкой\n' +
-    '• 💬 Поддержка куратора\n' +
-    '• 🎓 Сертификат об окончании\n\n' +
-    '⏱️ Длительность: Доступ навсегда\n\n' +
-    '🎰 **Бонус:** Все оплатившие участвуют в розыгрыше призов!\n\n' +
-    '📚 Для покупки нажмите "Купить курс"'
+'📚 Kurs haqida:\n\n' +
+'💰 Narxi: 2,500,000 so\'m\n\n' +
+'📝 Kursda:\n' +
+'• 📹 Barcha video darslarliklar\n' +
+'• ✍️ Amaliy topshiriqlar\n' +
+'• 👨‍🏫 Kuratorlar yordami\n' +
+'• 🎓 Kurs tugaganligi haqida sertifikat\n' +
+'• 💬 Yopiq chatga kirish\n' +
+'• ⏱️ Kursda doimiy qolish\n' +
+'• 🚗 Malibu avtomobilini yutib olish imkoniyati\n\n' +
+'🚀 Sotib olish uchun "Kursni sotib olish" tugmasini bosing'
   )
 })
 
-// Обработка получения контакта
+// Kontaktni qabul qilish handleri
 bot.on('contact', async (ctx) => {
   const contact = ctx.message.contact
   const telegramId = ctx.from?.id
@@ -211,89 +204,72 @@ bot.on('contact', async (ctx) => {
   if (!contact || !telegramId) return
 
   try {
-    // Создаем или обновляем пользователя
-    const user = await prisma.user.upsert({
-      where: { telegramId: BigInt(telegramId) },
-      update: {
-        phoneNumber: contact.phone_number,
-        firstName: contact.first_name,
-        username: ctx.from?.username
-      },
-      create: {
-        telegramId: BigInt(telegramId),
-        phoneNumber: contact.phone_number,
-        firstName: contact.first_name,
-        fullName: `${contact.first_name} ${contact.last_name || ''}`.trim(),
-        username: ctx.from?.username
-      }
-    })
-
-    // Возвращаем основное меню после сохранения контакта
+    // Kontakt saqlanganidan so'ng asosiy menyuga qaytish
     const mainKeyboard = Markup.keyboard([
-      ['📚 Купить курс', '💰 Проверить оплату'],
-      ['📞 Контакты', '📋 О курсе']
+      ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
 
     await ctx.reply(
-      `✅ Спасибо! Ваш контакт сохранен.\n\n` +
-      `💰 Стоимость курса: ${(COURSE_PRICE / 100).toLocaleString()} сум\n\n` +
-      `📚 В курс входит:\n` +
-      `• Все видео уроки\n` +
-      `• Практические задания\n` +
-      `• Поддержка куратора\n` +
-      `• Сертификат об окончании\n\n` +
-      `Теперь вы можете приобрести курс:`,
+      `✅ Rahmat! Kontaktingiz saqlandi.\n\n` +
+      `💰 Kurs narxi: ${(COURSE_PRICE / 100).toLocaleString()} so'm\n\n` +
+      `📚 Kursda:\n` +
+      `• Barcha video darslar\n` +
+      `• Amaliy topshiriqlar\n` +
+      `• Kuratorlar yordami\n` +
+      `• Kurs tugaganligi haqida sertifikat\n\n` +
+      `Endi kursni sotib olishingiz mumkin:`,
       mainKeyboard
     )
 
-    // Дополнительно показываем inline кнопку для быстрой оплаты
+    // Tezkor to'lov uchun inline tugmani ko'rsatish
     const paymentKeyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('💳 Оплатить через Payme', 'pay_payme')]
+      [Markup.button.callback('💳 Payme orqali to\'lash', 'pay_payme')]
     ])
 
     await ctx.reply(
-      `🚀 Готовы начать обучение?`,
+      `🚀 O'qishni boshlashga tayyormisiz?`,
       paymentKeyboard
     )
   } catch (error) {
     console.error('Error saving contact:', error)
-    await ctx.reply('Произошла ошибка при сохранении контакта.')
+    await ctx.reply('Kontaktni saqlashda xatolik yuz berdi.')
   }
 })
 
-// Обработка callback кнопок
+// Callback tugmalarni qayta ishlash
 bot.action('pay_payme', async (ctx: BotContext) => {
   await ctx.answerCbQuery()
   
   const telegramId = ctx.from?.id
   if (!telegramId) {
-    console.error('❌ pay_payme: telegramId не найден')
+    console.error('❌ pay_payme: telegramId topilmadi')
     return
   }
 
   try {
-    console.log(`🔵 pay_payme: Начало обработки для telegramId ${telegramId}`)
+    console.log(`🔵 pay_payme: ${telegramId} uchun qayta ishlash boshlandi`)
     
-    // Получаем данные пользователя
+    // Foydalanuvchi ma'lumotlarini olish
     const user = await prisma.user.findUnique({
       where: { telegramId: BigInt(telegramId) }
     })
 
-    console.log(`🔵 pay_payme: Пользователь найден:`, user ? `ID ${user.id}` : 'НЕТ')
+    console.log(`🔵 pay_payme: Foydalanuvchi topildi:`, user ? `ID ${user.id}` : 'YO\'Q')
 
     if (!user) {
-      await ctx.reply('❌ Ошибка: пользователь не найден. Пожалуйста, начните заново с /start')
+      await ctx.reply('❌ Xatolik: foydalanuvchi topilmadi. Iltimos, /start dan qaytadan boshlang')
       return
     }
 
     if (!user.phoneNumber) {
-      await ctx.reply('❌ Для оплаты необходим ваш номер телефона. Пожалуйста, поделитесь контактом через кнопку "📚 Купить курс"')
+      await ctx.reply('❌ To\'lov uchun telefon raqamingiz kerak. Iltimos, "📚 Kursni sotib olish" tugmasi orqali kontaktni ulashing')
       return
     }
 
-    console.log(`🔵 pay_payme: Создание платежа, COURSE_PRICE = ${COURSE_PRICE}`)
+    console.log(`🔵 pay_payme: To\'lov yaratilmoqda, COURSE_PRICE = ${COURSE_PRICE}`)
 
-    // Создаем запись о платеже
+    // To'lov yozuvi yaratish
     const payment = await prisma.payment.create({
       data: {
         userId: user.id,
@@ -303,34 +279,34 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       }
     })
 
-    console.log(`🔵 pay_payme: Платеж создан #${payment.orderNumber}`)
+    console.log(`🔵 pay_payme: To\'lov yaratildi #${payment.orderNumber}`)
 
-    // Генерируем URL для оплаты через Payme Checkout
+    // Payme Checkout orqali to'lov uchun URL yaratish
     const paymentUrl = generatePaymeCheckoutUrl(
       PAYME_MERCHANT_ID,
       {
         order_id: payment.orderNumber.toString()
-        // user_id убран - Payme не требует его
+        // user_id o'chirildi - Payme buni talab qilmaydi
       },
       COURSE_PRICE,
       IS_TEST_MODE
     )
     
-    console.log(`🔵 pay_payme: Payme checkout URL сгенерирован`)
+    console.log(`🔵 pay_payme: Payme checkout URL yaratildi`)
     
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.url('💳 Перейти к оплате', paymentUrl)],
-      [Markup.button.callback('✅ Я оплатил', `check_payment_${payment.id}`)]
+      [Markup.button.url('💳 To\'lovga o\'tish', paymentUrl)],
+      [Markup.button.callback('✅ Men to\'ladim', `check_payment_${payment.id}`)]
     ])
 
     await ctx.reply(
-      `💳 **Оплата курса через Payme**\n\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n` +
-      `📱 Телефон: ${user.phoneNumber}\n` +
-      `📋 Номер заказа: #${payment.orderNumber}\n\n` +
-      `🔒 Безопасная оплата через Payme\n\n` +
-      `Нажмите кнопку "💳 Перейти к оплате" для оплаты через Payme.\n\n` +
-      `После успешной оплаты вы получите уведомление, и доступ к курсу будет автоматически активирован.`,
+      `💳 Payme orqali kurs to\'lovi\n\n` +
+      `💰 Narx: ${(payment.amount / 100).toLocaleString()} so\'m\n` +
+      `📱 Telefon: ${user.phoneNumber}\n` +
+      `📋 Buyurtma raqami: #${payment.orderNumber}\n\n` +
+      `🔒 Payme orqali xavfsiz to\'lov\n\n` +
+      `Payme orqali to\'lov uchun "💳 To\'lovga o\'tish" tugmasini bosing.\n\n` +
+      `Muvaffaqiyatli to\'lovdan so\'ng sizga xabar yuboriladi va kursga kirish avtomatik faollashtiriladi.`,
       keyboard
     )
 
@@ -341,7 +317,7 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       console.error('❌ Error details:', error.message)
       console.error('❌ Error stack:', error.stack)
     }
-    await ctx.reply('❌ Произошла ошибка при создании платежа. Попробуйте позже.')
+    await ctx.reply('❌ To\'lovni yaratishda xatolik yuz berdi. Keyinroq urinib ko\'ring.')
   }
 })
 
@@ -349,13 +325,13 @@ bot.action('contact_admin', async (ctx: BotContext) => {
   await ctx.answerCbQuery()
   
   await ctx.reply(
-    '📞 Свяжитесь с администратором:\n\n' +
+    '📞 Administrator bilan bog\'lanish:\n\n' +
     '• Telegram: @ibrakhimzhanovit\n' +
     '• Email: support@example.com'
   )
 })
 
-// Обработчик проверки платежа
+// To'lovni tekshirish handleri
 bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
   await ctx.answerCbQuery()
   
@@ -371,50 +347,50 @@ bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
     })
 
     if (!payment || payment.user.telegramId !== BigInt(telegramId)) {
-      await ctx.reply('❌ Платеж не найден.')
+      await ctx.reply('❌ To\'lov topilmadi.')
       return
     }
 
     if (payment.status === 'PAID') {
       await ctx.reply(
-        '✅ Ваш платеж уже подтвержден! Доступ к курсу активен.\n\n' +
-        '📚 Используйте /mycourse для доступа к материалам курса.'
+        '✅ To\'lovingiz allaqachon tasdiqlangan! Kursga kirish faol.\n\n' +
+        '📚 Kurs materiallariga kirish uchun /mycourse dan foydalaning.'
       )
       return
     }
 
     if (payment.status === 'CANCELLED') {
       await ctx.reply(
-        '❌ Этот платеж был отменен.\n\n' +
-        'Попробуйте создать новый заказ с помощью команды /buy'
+        '❌ Bu to\'lov bekor qilingan.\n\n' +
+        '/buy buyrug\'i yordamida yangi buyurtma yaratib ko\'ring'
       )
       return
     }
 
-    // В mock режиме просто показываем статус
+    // Mock rejimida faqat holatni ko'rsatish
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.callback('🔄 Проверить еще раз', `check_payment_${paymentId}`)]
+      [Markup.button.callback('🔄 Yana tekshirish', `check_payment_${paymentId}`)]
     ])
 
     const timeElapsed = Math.floor((Date.now() - payment.createdAt.getTime()) / 1000 / 60)
 
     await ctx.reply(
-      `⏳ Ваш платеж находится в обработке\n\n` +
-      `📋 Номер заказа: #${payment.orderNumber}\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n` +
-      `⏱️ Создан: ${timeElapsed} мин. назад\n\n` +
-      `🔍 Если вы уже совершили оплату, подождите несколько секунд и нажмите кнопку "Проверить еще раз".\n\n` +
-      `📞 Если возникли проблемы, свяжитесь с поддержкой: @ibrakhimzhanovit`,
+      `⏳ To\'lovingiz qayta ishlanmoqda\n\n` +
+      `📋 Buyurtma raqami: #${payment.orderNumber}\n` +
+      `💰 Summa: ${(payment.amount / 100).toLocaleString()} so\'m\n` +
+      `⏱️ Yaratilgan: ${timeElapsed} daqiqa oldin\n\n` +
+      `🔍 Agar to\'lovni allaqachon amalga oshirgan bo\'lsangiz, bir necha soniya kuting va "Yana tekshirish" tugmasini bosing.\n\n` +
+      `📞 Agar muammolar yuzaga kelsa, qo\'llab-quvvatlash bilan bog\'laning: @ibrakhimzhanovit`,
       keyboard
     )
 
   } catch (error) {
     console.error('Error checking payment:', error)
-    await ctx.reply('❌ Ошибка при проверке платежа.')
+    await ctx.reply('❌ To\'lovni tekshirishda xatolik.')
   }
 })
 
-// Административные команды
+// Administrativ buyruqlar
 bot.command('admin_stats', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   
@@ -429,7 +405,7 @@ bot.command('admin_stats', async (ctx: BotContext) => {
     const paidPayments = await prisma.payment.count({ where: { status: 'PAID' } })
     const pendingPayments = await prisma.payment.count({ where: { status: 'PENDING' } })
     
-    // Считаем доход
+    // Daromadni hisoblash
     const paidPaymentsData = await prisma.payment.findMany({
       where: { status: 'PAID' },
       select: { amount: true }
@@ -437,25 +413,25 @@ bot.command('admin_stats', async (ctx: BotContext) => {
     const totalRevenue = paidPaymentsData.reduce((sum, p) => sum + p.amount, 0)
     
     await ctx.reply(
-      `📊 **Статистика бота**\n\n` +
-      `👥 **Пользователи:**\n` +
-      `• Всего: ${totalUsers}\n` +
-      `• Оплативших: ${paidUsers} (${Math.round(paidUsers / totalUsers * 100)}%)\n` +
-      `• Не оплативших: ${totalUsers - paidUsers}\n\n` +
-      `💳 **Платежи:**\n` +
-      `• Всего: ${totalPayments}\n` +
-      `• Оплачено: ${paidPayments}\n` +
-      `• В ожидании: ${pendingPayments}\n\n` +
-      `💰 **Доход:**\n` +
-      `• Общий: ${(totalRevenue / 100).toLocaleString()} сум`
+      `📊 Bot statistikasi\n\n` +
+      `👥 Foydalanuvchilar:\n` +
+      `• Jami: ${totalUsers}\n` +
+      `• To\'laganlar: ${paidUsers} (${Math.round(paidUsers / totalUsers * 100)}%)\n` +
+      `• To\'lamaganlar: ${totalUsers - paidUsers}\n\n` +
+      `💳 To\'lovlar:\n` +
+      `• Jami: ${totalPayments}\n` +
+      `• To\'langan: ${paidPayments}\n` +
+      `• Kutilmoqda: ${pendingPayments}\n\n` +
+      `💰 Daromad:\n` +
+      `• Umumiy: ${(totalRevenue / 100).toLocaleString()} so\'m`
     )
   } catch (error) {
     console.error('Error getting stats:', error)
-    await ctx.reply('Ошибка при получении статистики.')
+    await ctx.reply('Statistikani olishda xatolik.')
   }
 })
 
-// Административные обработчики для подтверждения платежей
+// To'lovni tasdiqlash uchun admin handlerlari
 bot.action(/admin_confirm_(.+)/, async (ctx: BotContext) => {
   await ctx.answerCbQuery()
   
@@ -464,7 +440,7 @@ bot.action(/admin_confirm_(.+)/, async (ctx: BotContext) => {
   const adminUsernames = process.env.ADMIN_IDS?.split(',') || []
   
   if (!adminUsername || !adminUsernames.includes(adminUsername)) {
-    await ctx.reply('❌ У вас нет прав для этого действия.')
+    await ctx.reply('❌ Sizda bu harakat uchun huquq yo\'q.')
     return
   }
 
@@ -478,30 +454,30 @@ bot.action(/admin_confirm_(.+)/, async (ctx: BotContext) => {
       include: { user: true }
     })
 
-    // Обновляем статус пользователя
+    // Foydalanuvchi holatini yangilash
     await prisma.user.update({
       where: { id: payment.userId },
       data: { isPaid: true }
     })
 
-    await ctx.reply(`✅ Платеж подтвержден! Заказ #${payment.orderNumber}`)
+    await ctx.reply(`✅ To\'lov tasdiqlandi! Buyurtma #${payment.orderNumber}`)
     
-    // Уведомляем пользователя
+    // Foydalanuvchiga xabar yuborish
     try {
       await ctx.telegram.sendMessage(
         payment.user.telegramId.toString(),
-        `🎉 Поздравляем! Ваш платеж подтвержден!\n\n` +
-        `✅ Доступ к курсу активирован\n` +
-        `👤 ID пользователя: ${payment.user.id}\n` +
-        `📋 Номер заказа: ${payment.orderNumber}\n\n` +
-        `📚 Добро пожаловать на курс! Начинайте обучение прямо сейчас.`
+        `🎉 Tabriklaymiz! To\'lovingiz tasdiqlandi!\n\n` +
+        `✅ Kursga kirish faollashtirildi\n` +
+        `👤 Foydalanuvchi ID: ${payment.user.id}\n` +
+        `📋 Buyurtma raqami: ${payment.orderNumber}\n\n` +
+        `📚 Kursga xush kelibsiz! Hoziroq o\'qishni boshlang.`
       )
     } catch (error) {
       console.error('Failed to notify user:', error)
     }
   } catch (error) {
     console.error('Error confirming payment:', error)
-    await ctx.reply('❌ Ошибка при подтверждении платежа.')
+    await ctx.reply('❌ To\'lovni tasdiqlashda xatolik.')
   }
 })
 
@@ -513,7 +489,7 @@ bot.action(/admin_reject_(.+)/, async (ctx: BotContext) => {
   const adminUsernames = process.env.ADMIN_IDS?.split(',') || []
   
   if (!adminUsername || !adminUsernames.includes(adminUsername)) {
-    await ctx.reply('❌ У вас нет прав для этого действия.')
+    await ctx.reply('❌ Sizda bu harakat uchun huquq yo\'q.')
     return
   }
 
@@ -524,111 +500,81 @@ bot.action(/admin_reject_(.+)/, async (ctx: BotContext) => {
       include: { user: true }
     })
 
-    await ctx.reply(`❌ Платеж отклонен. Заказ #${payment.orderNumber}`)
+    await ctx.reply(`❌ To\'lov rad etildi. Buyurtma #${payment.orderNumber}`)
     
-    // Уведомляем пользователя
+    // Foydalanuvchiga xabar yuborish
     try {
       await ctx.telegram.sendMessage(
         payment.user.telegramId.toString(),
-        `❌ К сожалению, ваш платеж не был подтвержден.\n\n` +
-        `👤 ID пользователя: ${payment.user.id}\n` +
-        `📋 Номер заказа: ${payment.orderNumber}\n\n` +
-        `📞 Если у вас есть вопросы, свяжитесь с поддержкой: @ibrakhimzhanovit`
+        `❌ Afsuski, to\'lovingiz tasdiqlanmadi.\n\n` +
+        `👤 Foydalanuvchi ID: ${payment.user.id}\n` +
+        `📋 Buyurtma raqami: ${payment.orderNumber}\n\n` +
+        `📞 Agar savollaringiz bo\'lsa, qo\'llab-quvvatlash bilan bog\'laning: @ibrakhimzhanovit`
       )
     } catch (error) {
       console.error('Failed to notify user:', error)
     }
   } catch (error) {
     console.error('Error rejecting payment:', error)
-    await ctx.reply('❌ Ошибка при отклонении платежа.')
+    await ctx.reply('❌ To\'lovni rad etishda xatolik.')
   }
 })
 
-// ============ АДМИНСКИЕ ОБРАБОТЧИКИ ============
+// ============ ADMIN HANDLERLAR ============
 
-// Кнопка "🔧 Админ-панель"
-bot.hears('🔧 Админ-панель', async (ctx: BotContext) => {
+// "🔧 Admin panel" tugmasi
+bot.hears('🔧 Admin panel', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.reply('❌ У вас нет доступа к админ-панели.')
+    await ctx.reply('❌ Sizda admin panelga kirish huquqi yo\'q.')
     return
   }
   
   await showAdminPanel(ctx)
 })
 
-// Кнопка "🔙 Назад в главное меню"
-bot.hears('🔙 Назад в главное меню', async (ctx: BotContext) => {
+// "🔙 Asosiy menyuga qaytish" tugmasi
+bot.hears('🔙 Asosiy menyuga qaytish', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   const isAdmin = telegramId ? hasAdminAccess(telegramId) : false
   
   if (isAdmin) {
     const role = getRoleText(telegramId!)
     const keyboard = Markup.keyboard([
-      ['🔧 Админ-панель'],
-      ['📚 Купить курс', '💰 Проверить оплату'],
-      ['📞 Контакты', '📋 О курсе']
+      ['🔧 Admin panel'],
+      ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     await ctx.reply(
-      `${role}, выберите действие:`,
+      `${role}, harakatni tanlang:`,
       keyboard
     )
   } else {
     const keyboard = Markup.keyboard([
-      ['📚 Купить курс', '💰 Проверить оплату'],
-      ['📞 Контакты', '📋 О курсе']
+      ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     await ctx.reply(
-      'Выберите действие:',
+      'Harakatni tanlang:',
       keyboard
     )
   }
 })
 
-// Кнопка "🗂 Экспорт XLSX"
-bot.hears('🗂 Экспорт XLSX', async (ctx: BotContext) => {
+// "🗂 Ishtirokchilarni eksport qilish" tugmasi
+bot.hears('🗂 Ishtirokchilarni eksport qilish', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   if (!telegramId || !hasAdminAccess(telegramId)) return
   
   await handleExportXLSX(ctx)
 })
 
-// Кнопка "🔔 Управление розыгрышем"
-bot.hears('🔔 Управление розыгрышем', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) return
-  
-  await handleLotteryControl(ctx)
-})
 
-// Кнопка "🎁 Выбрать победителя"
-bot.hears('🎁 Выбрать победителя', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) return
-  
-  await handleSelectWinner(ctx)
-})
 
-// Кнопка "🏆 История розыгрышей"
-bot.hears('🏆 История розыгрышей', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) return
-  
-  await handleLotteryHistory(ctx)
-})
-
-// Кнопка "🧾 Чек по userId"
-bot.hears('🧾 Чек по userId', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) return
-  
-  await handleCheckUserId(ctx)
-})
-
-// Кнопка "📊 Статистика"
-bot.hears('📊 Статистика', async (ctx: BotContext) => {
+// "📊 Statistika" tugmasi
+bot.hears('📊 Statistika', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
   if (!telegramId || !hasAdminAccess(telegramId)) return
 
@@ -639,7 +585,7 @@ bot.hears('📊 Статистика', async (ctx: BotContext) => {
     const paidPayments = await prisma.payment.count({ where: { status: 'PAID' } })
     const pendingPayments = await prisma.payment.count({ where: { status: 'PENDING' } })
     
-    // Считаем доход
+    // Daromadni hisoblash
     const paidPaymentsData = await prisma.payment.findMany({
       where: { status: 'PAID' },
       select: { amount: true }
@@ -647,134 +593,22 @@ bot.hears('📊 Статистика', async (ctx: BotContext) => {
     const totalRevenue = paidPaymentsData.reduce((sum, p) => sum + p.amount, 0)
     
     await ctx.reply(
-      `📊 **Статистика бота**\n\n` +
-      `👥 **Пользователи:**\n` +
-      `• Всего: ${totalUsers}\n` +
-      `• Оплативших: ${paidUsers} (${totalUsers > 0 ? Math.round(paidUsers / totalUsers * 100) : 0}%)\n` +
-      `• Не оплативших: ${totalUsers - paidUsers}\n\n` +
-      `💳 **Платежи:**\n` +
-      `• Всего: ${totalPayments}\n` +
-      `• Оплачено: ${paidPayments}\n` +
-      `• В ожидании: ${pendingPayments}\n\n` +
-      `💰 **Доход:**\n` +
-      `• Общий: ${(totalRevenue / 100).toLocaleString()} сум`
+      `📊 Bot statistikasi\n\n` +
+      `👥 Foydalanuvchilar:\n` +
+      `• Jami: ${totalUsers}\n` +
+      `• To'laganlar: ${paidUsers} (${totalUsers > 0 ? Math.round(paidUsers / totalUsers * 100) : 0}%)\n` +
+      `• To'lamaganlar: ${totalUsers - paidUsers}\n\n` +
+      `💳 To'lovlar:\n` +
+      `• Jami: ${totalPayments}\n` +
+      `• To'langan: ${paidPayments}\n` +
+      `• Kutilmoqda: ${pendingPayments}\n\n` +
+      `💰 Daromad:\n` +
+      `• Umumiy: ${(totalRevenue / 100).toLocaleString()} so'm`
     )
   } catch (error) {
     console.error('Error getting stats:', error)
-    await ctx.reply('❌ Ошибка при получении статистики.')
+    await ctx.reply('❌ Statistikani olishda xatolik.')
   }
-})
-
-// Обработка UUID для чека (когда админ вводит текст после нажатия "Чек по userId")
-bot.on('text', async (ctx: BotContext) => {
-  if (!ctx.message || !('text' in ctx.message)) return
-  
-  const text = ctx.message.text
-  const telegramId = ctx.from?.id
-  
-  // Проверяем, является ли это UUID
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  
-  if (!uuidRegex.test(text)) return // Не UUID, пропускаем
-  
-  if (!telegramId || !hasAdminAccess(telegramId)) return // Только для админов
-  
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: text },
-      include: {
-        payments: {
-          orderBy: { createdAt: 'desc' },
-          take: 5
-        }
-      }
-    })
-    
-    if (!user) {
-      await ctx.reply('❌ Пользователь с таким ID не найден.')
-      return
-    }
-    
-    const { maskPhone } = await import('./admin/export-xlsx')
-    const maskedPhone = maskPhone(user.phoneNumber || '')
-    
-    let message = `🧾 **Информация о пользователе**\n\n`
-    message += `👤 Имя: ${user.fullName || user.firstName}\n`
-    message += `📱 Телефон: ${maskedPhone}\n`
-    message += `🆔 Username: @${user.username || 'не указан'}\n`
-    message += `💳 Статус: ${user.isPaid ? '✅ Оплачен' : '❌ Не оплачен'}\n`
-    message += `📅 Регистрация: ${user.createdAt.toLocaleString('ru-RU')}\n\n`
-    
-    if (user.payments.length > 0) {
-      message += `💰 **Платежи (последние 5):**\n\n`
-      for (const payment of user.payments) {
-        const statusEmoji = payment.status === 'PAID' ? '✅' : payment.status === 'PENDING' ? '⏳' : '❌'
-        message += `${statusEmoji} #${payment.orderNumber} - ${(payment.amount / 100).toLocaleString()} сум\n`
-        message += `   ${payment.createdAt.toLocaleString('ru-RU')}\n`
-        if (payment.completedAt) {
-          message += `   Оплачен: ${payment.completedAt.toLocaleString('ru-RU')}\n`
-        }
-        message += `\n`
-      }
-    } else {
-      message += `💰 Платежей нет`
-    }
-    
-    await ctx.reply(message)
-  } catch (error) {
-    console.error('Error checking user:', error)
-    await ctx.reply('❌ Ошибка при получении данных пользователя.')
-  }
-})
-
-// Callback для управления розыгрышем
-bot.action('lottery_start', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.answerCbQuery('❌ Нет доступа')
-    return
-  }
-  
-  await handleLotteryStart(ctx)
-})
-
-bot.action('lottery_stop', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.answerCbQuery('❌ Нет доступа')
-    return
-  }
-  
-  await handleLotteryStop(ctx)
-})
-
-bot.action('admin_panel', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.answerCbQuery('❌ Нет доступа')
-    return
-  }
-  
-  await ctx.answerCbQuery()
-  
-  // Удаляем предыдущее сообщение
-  try {
-    await ctx.deleteMessage()
-  } catch (error) {
-    // Игнорируем ошибку, если сообщение уже удалено
-  }
-  
-  await showAdminPanel(ctx)
-})
-
-bot.action('generate_random_receipt', async (ctx: BotContext) => {
-  const telegramId = ctx.from?.id
-  if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.answerCbQuery('❌ Нет доступа')
-    return
-  }
-  
-  await handleGenerateRandomReceipt(ctx)
 })
 
 export { bot }

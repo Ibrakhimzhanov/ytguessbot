@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,18 +8,17 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(uuid()) @db.Uuid
-  telegramId  BigInt   @unique @map("telegram_id")
-  username    String?  @map("username") @db.VarChar(255)
-  firstName   String?  @map("first_name") @db.VarChar(255)
-  phoneNumber String   @map("phone_number") @db.VarChar(20)
-  fullName    String   @map("full_name") @db.VarChar(255)
-  isPaid      Boolean  @default(false) @map("is_paid")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relationships
-  payments    Payment[]
+  id          String    @id @default(uuid()) @db.Uuid
+  telegramId  BigInt    @unique @map("telegram_id")
+  username    String?   @map("username") @db.VarChar(255)
+  firstName   String?   @map("first_name") @db.VarChar(255)
+  phoneNumber String    @map("phone_number") @db.VarChar(20)
+  fullName    String    @map("full_name") @db.VarChar(255)
+  isPaid      Boolean   @default(false) @map("is_paid")
+  language    String    @default("uz") @map("language") @db.VarChar(2)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lotteryWins Lottery[]
+  payments    Payment[]
 
   @@map("users")
 }
@@ -30,16 +26,14 @@ model User {
 model Payment {
   id          String        @id @default(uuid()) @db.Uuid
   userId      String        @map("user_id") @db.Uuid
-  orderNumber Int           @default(autoincrement()) @map("order_number") // Последовательный номер заказа (1, 2, 3...)
-  amount      Int           // в тийинах (центах)
+  orderNumber Int           @default(autoincrement()) @map("order_number")
+  amount      Int
   currency    String        @default("UZS") @db.VarChar(3)
   status      PaymentStatus @default(PENDING)
   paymeId     String?       @map("payme_id") @db.VarChar(255)
   createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   completedAt DateTime?     @map("completed_at") @db.Timestamptz(6)
-
-  // Relationships
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
@@ -49,9 +43,7 @@ model Lottery {
   winnerId  String   @map("winner_id") @db.Uuid
   prize     String   @db.VarChar(255)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  // Relationships
-  winner User @relation(fields: [winnerId], references: [id], onDelete: Cascade)
+  winner    User     @relation(fields: [winnerId], references: [id], onDelete: Cascade)
 
   @@map("lottery")
 }
