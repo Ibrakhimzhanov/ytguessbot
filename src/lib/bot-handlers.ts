@@ -106,6 +106,53 @@ bot.command('status', async (ctx: BotContext) => {
   }
 })
 
+// Обработчик кнопки "💰 To'lovni tekshirish"
+bot.hears('💰 To\'lovni tekshirish', async (ctx: BotContext) => {
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) },
+      include: { 
+        payments: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    })
+
+    if (!user) {
+      await ctx.reply('Siz hali tizimda ro\'yxatdan o\'tmagansiz. Ro\'yxatdan o\'tish uchun /start dan foydalaning.')
+      return
+    }
+
+    const statusIcon = user.isPaid ? '✅' : '❌'
+    const statusText = user.isPaid ? 'To\'langan' : 'To\'lanmagan'
+    
+    const lastPayment = user.payments[0]
+    let paymentInfo = ''
+    
+    if (lastPayment) {
+      const date = lastPayment.createdAt.toLocaleDateString('uz-UZ')
+      paymentInfo = `\n📋 Oxirgi to\'lov: #${lastPayment.orderNumber}\n` +
+                   `📅 Sana: ${date}\n` +
+                   `💰 Summa: ${(lastPayment.amount / 100).toLocaleString()} so\'m\n` +
+                   `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
+    }
+
+    await ctx.reply(
+      `📊 Sizning holatingiz\n\n` +
+      `👤 Ism: ${user.fullName || user.firstName}\n` +
+      `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
+    )
+  } catch (error) {
+    console.error('Error checking status:', error)
+    await ctx.reply('Holatni tekshirishda xatolik yuz berdi.')
+  }
+})
+
 // Kursga kirish buyrug'i
 bot.command('mycourse', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
@@ -132,21 +179,20 @@ bot.command('mycourse', async (ctx: BotContext) => {
 
     // Kurs materiallarini yuborish
     const keyboard = Markup.inlineKeyboard([
-      [Markup.button.url('📺 Video darslar', 'https://example.com/videos')],
-      [Markup.button.url('📄 Kurs materiallari', 'https://example.com/materials')],
-      [Markup.button.url('💬 Qo\'llab-quvvatlash chati', 'https://t.me/support_chat')],
-      [Markup.button.url('📝 Topshiriqlar', 'https://example.com/tasks')]
+      [Markup.button.url('📄 Kurs', 'https://t.me/+lUQ9hk-_rzw3YzMy')],
+      [Markup.button.url('💬 Yopiq guruhga qo\'shilish', 'https://t.me/support_chat')],
     ])
 
     await ctx.reply(
-      `🎓 Kursga xush kelibsiz!\n\n` +
+`🎓 Kursga xush kelibsiz!\n\n` +
       `✅ Sizning kirishingiz faollashtirildi\n\n` +
       `📚 Mavjud materiallar:\n` +
-      `• Video darslar - dasturlash bo\'yicha to\'liq kurs\n` +
-      `• Matnli materiallar va eslatmalar\n` +
-      `• Tekshiruvchi amaliy topshiriqlar\n` +
-      `• Kurator va boshqa talabalar bilan chat\n` +
-      `• Tugatgandan so\'ng sertifikat\n\n` +
+      `•✅ Barcha video darslar\n` +
+      `•✅ Amaliy topshiriqlar\n` +
+      `•✅ Kurator yordami\n` +
+      `•✅ Kurator va boshqa talabalar bilan chat\n` +
+      `•✅ Tugatish sertifikati\n\n` +
+      `•🎁 Bonus: siz Malibu avtomobili o'yinida ishtirokchi bo'ldingiz\n\n` +
       `Bo\'limni tanlang:`,
       keyboard
     )
@@ -169,8 +215,8 @@ bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
   )
 })
 
-// "Aloqa" tugmasi handleri
-bot.hears('📞 Aloqa', async (ctx: BotContext) => {
+// "Kontaktlar" tugmasi handleri
+bot.hears('📞 Kontaktlar', async (ctx: BotContext) => {
   await ctx.reply(
     '📞 Call Center:\n\n' +
     '☎️ +998781136012\n' +
@@ -207,7 +253,7 @@ bot.on('contact', async (ctx) => {
     // Kontakt saqlanganidan so'ng asosiy menyuga qaytish
     const mainKeyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Aloqa', '📋 Kurs haqida']
+      ['📞 Kontaktlar', '📋 Kurs haqida']
     ]).resize()
 
     await ctx.reply(
