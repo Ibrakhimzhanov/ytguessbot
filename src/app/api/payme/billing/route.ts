@@ -124,13 +124,19 @@ export async function POST(req: NextRequest) {
 
     const response: MerchantResponse = { id: body.id }
 
+    console.log(`🔀 Switch: method=${body.method}`)
+
     switch (body.method) {
       case MerchantMethod.CHECK_PERFORM_TRANSACTION:
+        console.log('➡️ Calling checkPerformTransaction...')
         response.result = await checkPerformTransaction(body.params)
+        console.log('✅ checkPerformTransaction completed')
         break
 
       case MerchantMethod.CREATE_TRANSACTION:
+        console.log('➡️ Calling createTransaction...')
         response.result = await createTransaction(body.params)
+        console.log('✅ createTransaction completed')
         break
 
       case MerchantMethod.PERFORM_TRANSACTION:
