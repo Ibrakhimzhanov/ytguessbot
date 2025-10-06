@@ -69,7 +69,10 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json()
       requestId = body.id
-      console.log('📋 Payme Request:', JSON.stringify(body, null, 2))
+      console.log('📋 Payme Request:')
+      console.log('  Method:', body.method)
+      console.log('  Params:', JSON.stringify(body.params, null, 2))
+      console.log('  ID:', body.id)
     } catch {
       // Если не удалось прочитать body, продолжаем без id
     }
@@ -203,20 +206,46 @@ export async function POST(req: NextRequest) {
 async function checkPerformTransaction(params: any) {
   const { account, amount } = params
 
-  if (!account?.order_id) {
+  // Проверка наличия account
+  if (!account) {
     throw { 
-      code: -31001, 
+      code: -31050, 
       message: {
-        ru: 'order_id обязателен',
-        uz: 'order_id majburiy',
-        en: 'order_id is required'
+        ru: 'Параметр account обязателен',
+        uz: 'Account parametri majburiy',
+        en: 'Parameter account is required'
+      }
+    }
+  }
+
+  // Проверка наличия order_id
+  if (!account.order_id) {
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Параметр order_id обязателен',
+        uz: 'order_id parametri majburiy',
+        en: 'Parameter order_id is required'
+      }
+    }
+  }
+
+  // Проверка что order_id это число
+  const orderNumber = parseInt(account.order_id)
+  if (isNaN(orderNumber)) {
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Неверный формат order_id',
+        uz: 'order_id formati noto\'g\'ri',
+        en: 'Invalid order_id format'
       }
     }
   }
 
   // Найти платеж по номеру заказа
   const payment = await prisma.payment.findFirst({
-    where: { orderNumber: parseInt(account.order_id) },
+    where: { orderNumber },
     include: { user: true }
   })
 
@@ -254,13 +283,23 @@ async function checkPerformTransaction(params: any) {
   }
 
   // Проверка суммы (amount в тийинах)
-  if (amount !== payment.amount) {
+  // Преобразуем оба значения в числа для корректного сравнения
+  const requestAmount = Number(amount)
+  const expectedAmount = Number(payment.amount)
+  
+  console.log(`💰 Amount check: received=${requestAmount}, expected=${expectedAmount}`)
+  
+  if (requestAmount !== expectedAmount) {
     throw { 
       code: -31001, 
       message: {
         ru: 'Неверная сумма',
         uz: 'Noto\'g\'ri summa',
         en: 'Invalid amount'
+      },
+      data: {
+        expected: expectedAmount,
+        received: requestAmount
       }
     }
   }
@@ -276,15 +315,17 @@ async function checkPerformTransaction(params: any) {
 async function createTransaction(params: any) {
   const { account, amount, time, id } = params
 
-  // Проверяем возможность создания
+  // Проверяем возможность создания (выбросит исключение если не пройдет)
   await checkPerformTransaction(params)
 
-  // Найти платеж
+  // Найти платеж (после checkPerformTransaction точно существует)
+  const orderNumber = parseInt(account.order_id)
   const payment = await prisma.payment.findFirst({
-    where: { orderNumber: parseInt(account.order_id) },
+    where: { orderNumber },
     include: { user: true }
   })
 
+  // Дополнительная проверка (не должна сработать, но на всякий случай)
   if (!payment) {
     throw { 
       code: -31050, 
@@ -293,6 +334,16 @@ async function createTransaction(params: any) {
         uz: 'Buyurtma topilmadi',
         en: 'Order not found'
       }
+    }
+  }
+  
+  // Проверка, что для этого заказа еще нет активной транзакции
+  if (payment.paymeId && payment.status === 'PENDING') {
+    // Если транзакция уже существует, просто вернуть её данные
+    return {
+      create_time: payment.createdAt.getTime(),
+      transaction: payment.orderNumber.toString(),
+      state: 1
     }
   }
 
