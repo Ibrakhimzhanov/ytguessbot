@@ -519,6 +519,18 @@ async function performTransaction(params: any) {
 async function cancelTransaction(params: any) {
   const { id, reason } = params
 
+  // 1) Валидация reason
+  if (reason !== undefined && (typeof reason !== 'number' || reason < 1 || reason > 7)) {
+    throw {
+      code: -31050,
+      message: {
+        ru: 'Неверная причина отмены',
+        uz: 'Bekor qilish sababi noto\'g\'ri',
+        en: 'Invalid cancellation reason'
+      }
+    }
+  }
+
   const payment = await prisma.payment.findFirst({
     where: { paymeId: id }
   })
@@ -534,26 +546,31 @@ async function cancelTransaction(params: any) {
     }
   }
 
+  // 2) Идемпотентность: если уже отменена, вернуть сохраненные данные
   if (payment.status === 'CANCELLED') {
-    // Если уже отменена, вернуть сохраненное состояние
-    const wasPaid = payment.completedAt && payment.completedAt > payment.createdAt
+    const cancelled = Number(payment.paymeCancelTime || 0n)
+    const state = payment.paymePerformTime ? -2 : -1
     return {
-      cancel_time: payment.completedAt?.getTime() || Date.now(),
+      cancel_time: cancelled,
       transaction: payment.orderNumber.toString(),
-      state: wasPaid ? -2 : -1
+      state
     }
   }
+
+  // 3) Вычисляем состояние после отмены (до perform = -1, после = -2)
+  const state = payment.paymePerformTime ? -2 : -1
+  const now = Date.now()
 
   // Запоминаем статус до отмены
   const wasPaid = payment.status === 'PAID'
   
-  // Отменяем платеж
-  const now = new Date()
+  // 4) Сохраняем фиксированное время отмены
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       status: 'CANCELLED',
-      completedAt: now
+      paymeCancelTime: BigInt(now),
+      completedAt: new Date(now)
     }
   })
 
@@ -585,9 +602,9 @@ async function cancelTransaction(params: any) {
   }
 
   return {
-    cancel_time: now.getTime(),
+    cancel_time: now,
     transaction: payment.orderNumber.toString(),
-    state: wasPaid ? -2 : -1  // -2 если был perform, -1 если не был
+    state  // -2 если был perform (paymePerformTime), -1 если не был
   }
 }
 
@@ -627,7 +644,7 @@ async function checkTransaction(params: any) {
   return {
     create_time: Number(payment.paymeCreateTime!),
     perform_time: Number(payment.paymePerformTime || 0n),
-    cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
+    cancel_time: Number(payment.paymeCancelTime || 0n),
     transaction: payment.orderNumber.toString(),
     state,
     reason: null
@@ -652,10 +669,8 @@ async function getStatement(params: any) {
   })
 
   const transactions = payments.map(payment => {
-    const performed = payment.paymePerformTime && payment.paymePerformTime > 0n
-    
     const state = payment.status === 'CANCELLED'
-      ? (performed ? -2 : -1)
+      ? (payment.paymePerformTime ? -2 : -1)
       : payment.status === 'PAID'
       ? 2
       : payment.status === 'PENDING'
@@ -672,7 +687,7 @@ async function getStatement(params: any) {
       },
       create_time: Number(payment.paymeCreateTime!),
       perform_time: Number(payment.paymePerformTime || 0n),
-      cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
+      cancel_time: Number(payment.paymeCancelTime || 0n),
       transaction: payment.orderNumber.toString(),
       state,
       reason: null
