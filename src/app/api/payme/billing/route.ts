@@ -393,6 +393,28 @@ async function createTransaction(params: any) {
       }
     }
   }
+
+  if (invoice.status === 'PAID') {
+    throw { 
+      code: -31051, 
+      message: {
+        ru: 'Заказ уже оплачен',
+        uz: 'Buyurtma allaqachon to\'langan',
+        en: 'Order already paid'
+      }
+    }
+  }
+
+  if (invoice.status === 'CANCELLED') {
+    throw { 
+      code: -31052, 
+      message: {
+        ru: 'Заказ отменен',
+        uz: 'Buyurtma bekor qilingan',
+        en: 'Order cancelled'
+      }
+    }
+  }
   
   // Одна активная транзакция на заказ запрещена
   if (invoice.paymeId && invoice.status === 'PENDING') {
