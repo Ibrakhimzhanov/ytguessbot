@@ -249,6 +249,11 @@ async function checkPerformTransaction(params: any) {
     include: { user: true }
   })
 
+  console.log(`🔍 Payment lookup: orderNumber=${orderNumber}, found=${!!payment}`)
+  if (payment) {
+    console.log(`📦 Payment details: amount=${payment.amount}, status=${payment.status}`)
+  }
+
   if (!payment) {
     throw { 
       code: -31050, 
