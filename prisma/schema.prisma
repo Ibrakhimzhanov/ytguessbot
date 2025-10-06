@@ -30,7 +30,7 @@ model Payment {
   amount          Int
   currency        String        @default("UZS") @db.VarChar(3)
   status          PaymentStatus @default(PENDING)
-  paymeId         String?       @map("payme_id") @db.VarChar(255)
+  paymeId         String?       @unique @map("payme_id") @db.VarChar(255)
   paymeCreateTime BigInt?       @map("payme_create_time")
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   completedAt     DateTime?     @map("completed_at") @db.Timestamptz(6)

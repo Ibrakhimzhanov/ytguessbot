@@ -418,9 +418,14 @@ async function createTransaction(params: any) {
     }
   })
 
+  // ВАЖНО: перечитываем payment из БД и возвращаем сохраненное значение
+  const saved = await prisma.payment.findUnique({
+    where: { id: payment.id }
+  })
+
   return {
-    create_time: time,
-    transaction: payment.orderNumber.toString(),
+    create_time: Number(saved!.paymeCreateTime),
+    transaction: saved!.orderNumber.toString(),
     state: 1
   }
 }
