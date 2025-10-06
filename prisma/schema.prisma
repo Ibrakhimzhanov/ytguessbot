@@ -34,6 +34,7 @@ model Payment {
   paymeCreateTime  BigInt?       @map("payme_create_time")
   paymePerformTime BigInt?       @map("payme_perform_time")
   paymeCancelTime  BigInt?       @map("payme_cancel_time")
+  paymeCancelReason Int?         @map("payme_cancel_reason")
   createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
   completedAt      DateTime?     @map("completed_at") @db.Timestamptz(6)
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)

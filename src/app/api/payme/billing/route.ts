@@ -560,16 +560,18 @@ async function cancelTransaction(params: any) {
   // 3) Вычисляем состояние после отмены (до perform = -1, после = -2)
   const state = payment.paymePerformTime ? -2 : -1
   const now = Date.now()
+  const cancelReason = typeof reason === 'number' ? reason : 5
 
   // Запоминаем статус до отмены
   const wasPaid = payment.status === 'PAID'
   
-  // 4) Сохраняем фиксированное время отмены
+  // 4) Сохраняем фиксированное время отмены и причину
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       status: 'CANCELLED',
       paymeCancelTime: BigInt(now),
+      paymeCancelReason: cancelReason,
       completedAt: new Date(now)
     }
   })
@@ -647,7 +649,7 @@ async function checkTransaction(params: any) {
     cancel_time: Number(payment.paymeCancelTime || 0n),
     transaction: payment.orderNumber.toString(),
     state,
-    reason: null
+    reason: state < 0 ? (payment.paymeCancelReason ?? 5) : null
   }
 }
 
@@ -690,7 +692,7 @@ async function getStatement(params: any) {
       cancel_time: Number(payment.paymeCancelTime || 0n),
       transaction: payment.orderNumber.toString(),
       state,
-      reason: null
+      reason: state < 0 ? (payment.paymeCancelReason ?? 5) : null
     }
   })
 
