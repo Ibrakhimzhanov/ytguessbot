@@ -239,8 +239,8 @@ bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
   }
 })
 
-// "Kontaktlar" tugmasi handleri
-bot.hears('📞 Kontaktlar', async (ctx: BotContext) => {
+// "Aloqa" tugmasi handleri
+bot.hears('📞 Aloqa', async (ctx: BotContext) => {
   await ctx.reply(
     '📞 Call Center:\n\n' +
     '☎️ +998781136012\n' +

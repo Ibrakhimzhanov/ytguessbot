@@ -53,7 +53,7 @@ bot.start(async (ctx) => {
     const keyboard = Markup.keyboard([
       ['🔧 Admin panel'],
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Kontaktlar', '📋 Kurs haqida']
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(
@@ -69,7 +69,7 @@ bot.start(async (ctx) => {
   } else {
     const keyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Kontaktlar', '📋 Kurs haqida']
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(
