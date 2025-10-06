@@ -204,6 +204,8 @@ export async function POST(req: NextRequest) {
  * Проверка возможности создания транзакции
  */
 async function checkPerformTransaction(params: any) {
+  console.log('⚡ checkPerformTransaction called with:', JSON.stringify(params))
+  
   const { account, amount } = params
 
   // Проверка наличия account
