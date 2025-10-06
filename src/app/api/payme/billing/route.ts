@@ -407,25 +407,40 @@ async function createTransaction(params: any) {
   }
 
   // Атомарно пишем и тут же читаем сохранённое значение
-  const saved = await prisma.$transaction(async (tx) => {
-    await tx.payment.update({
-      where: { id: invoice.id },
-      data: {
-        paymeId: id,
-        paymeCreateTime: BigInt(time),
-        status: 'PENDING'
-      }
+  try {
+    const saved = await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: invoice.id },
+        data: {
+          paymeId: id,
+          paymeCreateTime: BigInt(time),
+          status: 'PENDING'
+        }
+      })
+      
+      return tx.payment.findUnique({
+        where: { id: invoice.id }
+      })
     })
-    
-    return tx.payment.findUnique({
-      where: { id: invoice.id }
-    })
-  })
 
-  return {
-    create_time: Number(saved!.paymeCreateTime!),
-    transaction: saved!.orderNumber.toString(),
-    state: 1
+    return {
+      create_time: Number(saved!.paymeCreateTime!),
+      transaction: saved!.orderNumber.toString(),
+      state: 1
+    }
+  } catch (e: any) {
+    // Race condition: другой запрос уже создал транзакцию с этим paymeId
+    if (e.code === 'P2002') {
+      const existing = await prisma.payment.findUnique({
+        where: { paymeId: id }
+      })
+      return {
+        create_time: Number(existing!.paymeCreateTime!),
+        transaction: existing!.orderNumber.toString(),
+        state: 1
+      }
+    }
+    throw e
   }
 }
 
@@ -453,19 +468,20 @@ async function performTransaction(params: any) {
 
   if (payment.status === 'PAID') {
     return {
-      perform_time: payment.completedAt?.getTime() || Date.now(),
+      perform_time: Number(payment.paymePerformTime || 0n),
       transaction: payment.orderNumber.toString(),
       state: 2
     }
   }
 
   // Подтверждаем оплату
-  const now = new Date()
+  const now = Date.now()
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       status: 'PAID',
-      completedAt: now
+      completedAt: new Date(now),
+      paymePerformTime: BigInt(now)
     }
   })
 
@@ -491,7 +507,7 @@ async function performTransaction(params: any) {
   }
 
   return {
-    perform_time: now.getTime(),
+    perform_time: now,
     transaction: payment.orderNumber.toString(),
     state: 2
   }
@@ -597,23 +613,20 @@ async function checkTransaction(params: any) {
   }
 
   let state: number
-  switch (payment.status) {
-    case 'PENDING':
-      state = 1
-      break
-    case 'PAID':
-      state = 2
-      break
-    case 'CANCELLED':
-      state = -2
-      break
-    default:
-      state = 0
+  if (payment.status === 'CANCELLED') {
+    // Если была perform (paymePerformTime есть) → -2, иначе → -1
+    state = payment.paymePerformTime ? -2 : -1
+  } else if (payment.status === 'PAID') {
+    state = 2
+  } else if (payment.status === 'PENDING') {
+    state = 1
+  } else {
+    state = 0
   }
 
   return {
     create_time: Number(payment.paymeCreateTime!),
-    perform_time: payment.completedAt?.getTime() || 0,
+    perform_time: Number(payment.paymePerformTime || 0n),
     cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
     transaction: payment.orderNumber.toString(),
     state,
