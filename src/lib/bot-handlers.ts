@@ -31,6 +31,7 @@ bot.command('buy', async (ctx: BotContext) => {
     if (user?.isPaid) {
       await ctx.reply(
         '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
         'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
       return
@@ -90,11 +91,13 @@ bot.command('status', async (ctx: BotContext) => {
                    `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
     }
 
+    const loteryInfo = user.isPaid && user.loteryId ? `\n🎫 Lotereya raqamingiz: ${user.loteryId}` : ''
+
     await ctx.reply(
       `📊 Sizning holatingiz\n\n` +
       `👤 Ism: ${user.fullName || user.firstName}\n` +
       `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
-      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${loteryInfo}${paymentInfo}\n\n` +
       (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
     )
   } catch (error) {
@@ -137,11 +140,13 @@ bot.hears('💰 To\'lovni tekshirish', async (ctx: BotContext) => {
                    `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
     }
 
+    const loteryInfo = user.isPaid && user.loteryId ? `\n🎫 Lotereya raqamingiz: ${user.loteryId}` : ''
+
     await ctx.reply(
       `📊 Sizning holatingiz\n\n` +
       `👤 Ism: ${user.fullName || user.firstName}\n` +
       `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
-      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${loteryInfo}${paymentInfo}\n\n` +
       (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
     )
   } catch (error) {
@@ -201,15 +206,37 @@ bot.command('mycourse', async (ctx: BotContext) => {
 
 // Telefon raqamini so'rash handleri
 bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
-  const keyboard = Markup.keyboard([
-    [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
-  ]).resize()
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
 
-  await ctx.reply(
-    'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
-    'Kontaktni ulashish uchun quyidagi tugmani bosing:',
-    keyboard
-  )
+  try {
+    // Kurs allaqachon to'langanligini tekshirish
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) }
+    })
+
+    if (user?.isPaid) {
+      await ctx.reply(
+        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
+      return
+    }
+
+    const keyboard = Markup.keyboard([
+      [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
+    ]).resize()
+
+    await ctx.reply(
+      'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
+      'Kontaktni ulashish uchun quyidagi tugmani bosing:',
+      keyboard
+    )
+  } catch (error) {
+    console.error('Error in buy course handler:', error)
+    await ctx.reply('❌ Xatolik yuz berdi. Keyinroq urinib ko\'ring.')
+  }
 })
 
 // "Kontaktlar" tugmasi handleri
@@ -310,6 +337,15 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       return
     }
 
+    if (user.isPaid) {
+      await ctx.reply(
+        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
+      return
+    }
+
     console.log(`🔵 pay_payme: To\'lov yaratilmoqda, COURSE_PRICE = ${COURSE_PRICE}`)
 
     // To'lov yozuvi yaratish
@@ -397,6 +433,7 @@ bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
     if (payment.status === 'PAID') {
       await ctx.reply(
         '✅ To\'lovingiz allaqachon tasdiqlangan! Kursga kirish faol.\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${payment.user.loteryId}\n\n` +
         '📚 Kurs materiallariga kirish uchun /mycourse dan foydalaning.'
       )
       return
