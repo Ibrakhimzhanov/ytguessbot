@@ -41,6 +41,20 @@ interface MerchantResponse {
   }
 }
 
+// Обработка GET запросов - возвращаем ошибку
+export async function GET() {
+  return NextResponse.json({
+    error: {
+      code: -32300,
+      message: {
+        ru: 'Только POST запросы разрешены',
+        uz: 'Faqat POST so\'rovlarga ruxsat berilgan',
+        en: 'Only POST requests are allowed'
+      }
+    }
+  }, { status: 405 })
+}
+
 export async function POST(req: NextRequest) {
   let requestId: number | undefined
   
