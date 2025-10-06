@@ -94,9 +94,30 @@ export async function POST(req: NextRequest) {
     }
 
     // Проверяем базовую авторизацию от Payme
-    // Payme отправляет Authorization: Basic base64(Paycom:password)
-    console.log('🔍 DEBUG: PAYME_X_AUTH from env:', process.env.PAYME_X_AUTH)
-    const expectedAuth = Buffer.from(process.env.PAYME_X_AUTH || '').toString('base64')
+    // Payme отправляет Authorization: Basic base64(Paycom:KEY)
+    // где KEY — TEST_KEY в песочнице или KEY в продакшене
+    // Нормализуем пароль из переменных окружения:
+    //   - PAYME_BASIC_KEY (если задан) содержит только KEY
+    //   - PAYME_X_AUTH может быть в форматах:
+    //       * "merchant_id:KEY"
+    //       * "Paycom:KEY"
+    //   В итоге формируем Basic по правилу base64("Paycom:" + KEY)
+    const rawEnv = process.env.PAYME_X_AUTH || ''
+    const basicKey = process.env.PAYME_BASIC_KEY
+      ? process.env.PAYME_BASIC_KEY
+      : ((): string => {
+          if (!rawEnv) return ''
+          // Если значение уже в виде "Paycom:KEY" или "merchant:KEY"
+          if (rawEnv.includes(':')) {
+            const parts = rawEnv.split(':')
+            return parts[1] || ''
+          }
+          // Если в переменной уже только KEY
+          return rawEnv
+        })()
+
+    const expectedAuth = Buffer.from(`Paycom:${basicKey}`).toString('base64')
+    console.log('🔍 DEBUG: Using KEY length:', basicKey ? basicKey.length : 0)
     console.log('🔍 DEBUG: Expected auth:', `Basic ${expectedAuth}`)
     console.log('🔍 DEBUG: Received auth:', authHeader)
     console.log('🔍 DEBUG: Match:', authHeader === `Basic ${expectedAuth}`)
