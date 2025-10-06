@@ -6,10 +6,7 @@ import { prisma } from './prisma'
 import { Markup } from 'telegraf'
 import { generatePaymeCheckoutUrl } from './payme/payme-utils'
 import { hasAdminAccess, getRoleText } from './admin/roles'
-import {
-  showAdminPanel,
-  handleExportXLSX,
-} from './admin/admin-handlers'
+import { showAdminPanel, handleExportXLSX, } from './admin/admin-handlers'
 
 const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000') // tiyin hisobida narx (2,500,000 so'm)
 const PAYME_MERCHANT_ID = process.env.PAYME_X_AUTH?.split(':')[0] || ''

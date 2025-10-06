@@ -42,33 +42,68 @@ interface MerchantResponse {
 }
 
 export async function POST(req: NextRequest) {
+  let requestId: number | undefined
+  
   try {
     console.log('🔵 Payme Billing Request received')
     
     // Проверка авторизации
     const authHeader = req.headers.get('Authorization')
+    
+    // Пытаемся прочитать тело запроса для получения id
+    let body: MerchantRequest | null = null
+    try {
+      body = await req.json()
+      requestId = body.id
+      console.log('📋 Payme Request:', JSON.stringify(body, null, 2))
+    } catch {
+      // Если не удалось прочитать body, продолжаем без id
+    }
+    
     if (!authHeader) {
       return NextResponse.json({
+        id: requestId,
         error: {
           code: -32504,
-          message: 'Authorization header required'
+          message: {
+            ru: 'Заголовок авторизации отсутствует',
+            uz: 'Avtorizatsiya sarlavhasi mavjud emas',
+            en: 'Authorization header is missing'
+          }
         }
-      }, { status: 401 })
+      }, { status: 200 })
     }
 
     // Проверяем базовую авторизацию от Payme
     const expectedAuth = Buffer.from(`Paycom:${process.env.PAYME_X_AUTH?.split(':')[1] || ''}`).toString('base64')
     if (authHeader !== `Basic ${expectedAuth}`) {
       return NextResponse.json({
+        id: requestId,
         error: {
           code: -32504,
-          message: 'Invalid authorization'
+          message: {
+            ru: 'Неверные учетные данные авторизации',
+            uz: 'Avtorizatsiya ma\'lumotlari noto\'g\'ri',
+            en: 'Invalid authorization credentials'
+          }
         }
-      }, { status: 401 })
+      }, { status: 200 })
     }
-
-    const body: MerchantRequest = await req.json()
-    console.log('📋 Payme Request:', JSON.stringify(body, null, 2))
+    
+    // Если body уже прочитан, используем его, иначе это ошибка
+    if (!body) {
+      return NextResponse.json({
+        id: requestId,
+        error: {
+          code: -32700,
+          message: {
+            ru: 'Невозможно прочитать JSON',
+            uz: 'JSON o\'qib bo\'lmadi',
+            en: 'Unable to parse JSON'
+          }
+        }
+      }, { status: 200 })
+    }
 
     const response: MerchantResponse = { id: body.id }
 
@@ -100,22 +135,49 @@ export async function POST(req: NextRequest) {
       default:
         response.error = {
           code: -32601,
-          message: 'Method not found'
+          message: {
+            ru: 'Метод не найден',
+            uz: 'Metod topilmadi',
+            en: 'Method not found'
+          }
         }
     }
 
     console.log('🟢 Payme Response:', JSON.stringify(response, null, 2))
     return NextResponse.json(response)
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Payme Billing Error:', error)
+    
+    // Если это ошибка от методов Payme с кодом и сообщением
+    if (error && typeof error === 'object' && 'code' in error) {
+      return NextResponse.json({
+        id: requestId,
+        error: {
+          code: error.code,
+          message: error.message || {
+            ru: 'Неизвестная ошибка',
+            uz: 'Noma\'lum xato',
+            en: 'Unknown error'
+          },
+          data: error.data
+        }
+      }, { status: 200 })
+    }
+    
+    // Общая ошибка
     return NextResponse.json({
+      id: requestId,
       error: {
         code: -32400,
-        message: 'Invalid request',
+        message: {
+          ru: 'Неверный запрос',
+          uz: 'Noto\'g\'ri so\'rov',
+          en: 'Invalid request'
+        },
         data: error instanceof Error ? error.message : 'Unknown error'
       }
-    }, { status: 400 })
+    }, { status: 200 })
   }
 }
 
@@ -128,7 +190,14 @@ async function checkPerformTransaction(params: any) {
   const { account, amount } = params
 
   if (!account?.order_id) {
-    throw { code: -31001, message: 'order_id is required' }
+    throw { 
+      code: -31001, 
+      message: {
+        ru: 'order_id обязателен',
+        uz: 'order_id majburiy',
+        en: 'order_id is required'
+      }
+    }
   }
 
   // Найти платеж по номеру заказа
@@ -138,20 +207,48 @@ async function checkPerformTransaction(params: any) {
   })
 
   if (!payment) {
-    throw { code: -31050, message: 'Order not found' }
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Заказ не найден',
+        uz: 'Buyurtma topilmadi',
+        en: 'Order not found'
+      }
+    }
   }
 
   if (payment.status === 'PAID') {
-    throw { code: -31051, message: 'Order already paid' }
+    throw { 
+      code: -31051, 
+      message: {
+        ru: 'Заказ уже оплачен',
+        uz: 'Buyurtma allaqachon to\'langan',
+        en: 'Order already paid'
+      }
+    }
   }
 
   if (payment.status === 'CANCELLED') {
-    throw { code: -31052, message: 'Order cancelled' }
+    throw { 
+      code: -31052, 
+      message: {
+        ru: 'Заказ отменен',
+        uz: 'Buyurtma bekor qilingan',
+        en: 'Order cancelled'
+      }
+    }
   }
 
   // Проверка суммы (amount в тийинах)
   if (amount !== payment.amount) {
-    throw { code: -31001, message: 'Invalid amount' }
+    throw { 
+      code: -31001, 
+      message: {
+        ru: 'Неверная сумма',
+        uz: 'Noto\'g\'ri summa',
+        en: 'Invalid amount'
+      }
+    }
   }
 
   return {
@@ -175,7 +272,14 @@ async function createTransaction(params: any) {
   })
 
   if (!payment) {
-    throw { code: -31050, message: 'Order not found' }
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Заказ не найден',
+        uz: 'Buyurtma topilmadi',
+        en: 'Order not found'
+      }
+    }
   }
 
   // Обновить статус и добавить paymeId
@@ -206,7 +310,14 @@ async function performTransaction(params: any) {
   })
 
   if (!payment) {
-    throw { code: -31050, message: 'Transaction not found' }
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Транзакция не найдена',
+        uz: 'Tranzaksiya topilmadi',
+        en: 'Transaction not found'
+      }
+    }
   }
 
   if (payment.status === 'PAID') {
@@ -266,7 +377,14 @@ async function cancelTransaction(params: any) {
   })
 
   if (!payment) {
-    throw { code: -31050, message: 'Transaction not found' }
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Транзакция не найдена',
+        uz: 'Tranzaksiya topilmadi',
+        en: 'Transaction not found'
+      }
+    }
   }
 
   if (payment.status === 'CANCELLED') {
@@ -332,7 +450,14 @@ async function checkTransaction(params: any) {
   })
 
   if (!payment) {
-    throw { code: -31050, message: 'Transaction not found' }
+    throw { 
+      code: -31050, 
+      message: {
+        ru: 'Транзакция не найдена',
+        uz: 'Tranzaksiya topilmadi',
+        en: 'Transaction not found'
+      }
+    }
   }
 
   let state: number
