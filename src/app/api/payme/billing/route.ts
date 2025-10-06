@@ -363,29 +363,27 @@ async function createTransaction(params: any) {
 
   const orderNumber = parseInt(account.order_id)
   
-  // Сначала ищем по paymeId (для повторных запросов)
-  let payment = await prisma.payment.findFirst({
-    where: { paymeId: id },
-    include: { user: true }
+  // Всегда ищем по paymeId с findUnique (требуется @unique индекс)
+  const existing = await prisma.payment.findUnique({
+    where: { paymeId: id }
   })
 
-  // Если нашли - это повторный запрос, возвращаем сохраненные данные
-  if (payment) {
+  // Если нашли - это повторный запрос, возвращаем ровно сохраненные данные
+  if (existing) {
     return {
-      create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : time,
-      transaction: payment.orderNumber.toString(),
+      create_time: Number(existing.paymeCreateTime!),
+      transaction: existing.orderNumber.toString(),
       state: 1
     }
   }
 
-  // Если не нашли по paymeId - ищем заказ по номеру
-  payment = await prisma.payment.findFirst({
+  // Ищем заказ по номеру
+  const invoice = await prisma.payment.findFirst({
     where: { orderNumber },
-    orderBy: { createdAt: 'desc' }, // берем самый свежий
-    include: { user: true }
+    orderBy: { createdAt: 'desc' }
   })
 
-  if (!payment) {
+  if (!invoice) {
     throw { 
       code: -31050, 
       message: {
@@ -396,8 +394,8 @@ async function createTransaction(params: any) {
     }
   }
   
-  // Если заказ уже занят другой транзакцией - ошибка -31008
-  if (payment.paymeId && payment.status === 'PENDING') {
+  // Одна активная транзакция на заказ запрещена
+  if (invoice.paymeId && invoice.status === 'PENDING') {
     throw {
       code: -31008,
       message: {
@@ -408,23 +406,24 @@ async function createTransaction(params: any) {
     }
   }
 
-  // Создаем новую транзакцию
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      paymeId: id,
-      paymeCreateTime: BigInt(time),
-      status: 'PENDING'
-    }
-  })
-
-  // ВАЖНО: перечитываем payment из БД и возвращаем сохраненное значение
-  const saved = await prisma.payment.findUnique({
-    where: { id: payment.id }
+  // Атомарно пишем и тут же читаем сохранённое значение
+  const saved = await prisma.$transaction(async (tx) => {
+    await tx.payment.update({
+      where: { id: invoice.id },
+      data: {
+        paymeId: id,
+        paymeCreateTime: BigInt(time),
+        status: 'PENDING'
+      }
+    })
+    
+    return tx.payment.findUnique({
+      where: { id: invoice.id }
+    })
   })
 
   return {
-    create_time: Number(saved!.paymeCreateTime),
+    create_time: Number(saved!.paymeCreateTime!),
     transaction: saved!.orderNumber.toString(),
     state: 1
   }
@@ -613,7 +612,7 @@ async function checkTransaction(params: any) {
   }
 
   return {
-    create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
+    create_time: Number(payment.paymeCreateTime!),
     perform_time: payment.completedAt?.getTime() || 0,
     cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
     transaction: payment.orderNumber.toString(),
@@ -657,13 +656,13 @@ async function getStatement(params: any) {
 
     return {
       id: payment.paymeId,
-      time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
+      time: Number(payment.paymeCreateTime!),
       amount: payment.amount,
       account: {
         order_id: payment.orderNumber.toString(),
         user_id: payment.userId
       },
-      create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
+      create_time: Number(payment.paymeCreateTime!),
       perform_time: payment.completedAt?.getTime() || 0,
       cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
       transaction: payment.orderNumber.toString(),
