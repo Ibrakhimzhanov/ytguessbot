@@ -15,6 +15,7 @@ model User {
   phoneNumber String    @map("phone_number") @db.VarChar(20)
   fullName    String    @map("full_name") @db.VarChar(255)
   isPaid      Boolean   @default(false) @map("is_paid")
+  loteryId    Int?      @unique @map("lotery_id")
   language    String    @default("uz") @map("language") @db.VarChar(2)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lotteryWins Lottery[]

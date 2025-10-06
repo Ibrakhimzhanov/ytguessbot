@@ -520,10 +520,28 @@ async function performTransaction(params: any) {
     }
   })
 
+  // Генерируем уникальный 6-значный номер для лотереи
+  let loteryId: number | undefined
+  if (!payment.user.loteryId) {
+    let isUnique = false
+    while (!isUnique) {
+      loteryId = Math.floor(100000 + Math.random() * 900000)
+      const existing = await prisma.user.findUnique({
+        where: { loteryId }
+      })
+      if (!existing) {
+        isUnique = true
+      }
+    }
+  }
+
   // Обновляем статус пользователя
   await prisma.user.update({
     where: { id: payment.userId },
-    data: { isPaid: true }
+    data: { 
+      isPaid: true,
+      ...(loteryId && { loteryId })
+    }
   })
 
   // Уведомляем пользователя в Telegram
@@ -533,7 +551,8 @@ async function performTransaction(params: any) {
       `🎉 Поздравляем! Ваш платеж успешно подтвержден!\n\n` +
       `✅ Доступ к курсу активирован\n` +
       `📋 Номер заказа: #${payment.orderNumber}\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n\n` +
+      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n` +
+      `🎫 Ваш лотерейный номер: ${loteryId || payment.user.loteryId}\n\n` +
       `📚 Используйте команду /mycourse для доступа к материалам курса.\n\n` +
       `🎓 Приятного обучения!`
     )
