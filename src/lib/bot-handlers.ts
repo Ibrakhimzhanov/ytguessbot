@@ -365,7 +365,6 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       PAYME_MERCHANT_ID,
       {
         order_id: payment.orderNumber.toString()
-        // user_id o'chirildi - Payme buni talab qilmaydi
       },
       COURSE_PRICE,
       IS_TEST_MODE
@@ -471,10 +470,35 @@ bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
 })
 
 // Administrativ buyruqlar
+bot.command('admin_check', async (ctx: BotContext) => {
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
+
+  const hasAccess = hasAdminAccess(telegramId)
+  const roleText = getRoleText(telegramId)
+  
+  await ctx.reply(
+    `🔐 Admin status check:\n\n` +
+    `👤 Your ID: ${telegramId}\n` +
+    `🎭 Role: ${roleText}\n` +
+    `✅ Admin Access: ${hasAccess ? 'Yes' : 'No'}`
+  )
+})
+
 bot.command('admin_stats', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
+  console.log('📊 admin_stats called by:', telegramId)
   
-  if (!telegramId || !hasAdminAccess(telegramId)) {
+  if (!telegramId) {
+    console.log('❌ No telegramId')
+    return
+  }
+  
+  const hasAccess = hasAdminAccess(telegramId)
+  console.log('🔐 hasAdminAccess:', hasAccess)
+  
+  if (!hasAccess) {
+    console.log('❌ Access denied for:', telegramId)
     return
   }
 
