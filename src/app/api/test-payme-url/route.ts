@@ -48,7 +48,8 @@ export async function GET(req: NextRequest) {
         COURSE_PRICE_SUM: COURSE_PRICE / 100,
         PAYME_MERCHANT_ID,
         IS_TEST_MODE,
-        PAYME_X_AUTH: process.env.PAYME_X_AUTH ? '✅ Установлен' : '❌ Не найден'
+        PAYME_X_AUTH: process.env.PAYME_X_AUTH ? '✅ Установлен' : '❌ Не найден',
+    PAYME_X_AUTH_VALUE: process.env.PAYME_X_AUTH || 'undefined'
       },
       test_data: {
         order_id: testOrderId

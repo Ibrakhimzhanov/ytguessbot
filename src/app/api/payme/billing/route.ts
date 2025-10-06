@@ -94,8 +94,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Проверяем базовую авторизацию от Payme
+    // Payme отправляет Authorization: Basic base64(Paycom:password)
+    // где password - это TEST_KEY для тестирования или KEY для продакшена
     const expectedAuth = Buffer.from(`Paycom:${process.env.PAYME_X_AUTH?.split(':')[1] || ''}`).toString('base64')
     console.log('🔑 Auth check: header present, validating...')
+    console.log('🔑 Expected auth:', `Basic ${expectedAuth}`)
+    console.log('🔑 Received auth:', authHeader)
     if (authHeader !== `Basic ${expectedAuth}`) {
       return NextResponse.json({
         id: requestId,
