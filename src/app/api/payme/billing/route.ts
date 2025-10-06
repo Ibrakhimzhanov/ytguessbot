@@ -417,13 +417,13 @@ async function createTransaction(params: any) {
   }
   
   // Одна активная транзакция на заказ запрещена
-  if (invoice.paymeId && invoice.status === 'PENDING') {
+  if (invoice.paymeId && invoice.status === 'PENDING' && invoice.paymeId !== id) {
     throw {
-      code: -31008,
+      code: -31050,
       message: {
-        ru: 'Невозможно выполнить операцию',
-        uz: 'Operatsiyani bajarish mumkin emas',
-        en: 'Unable to perform operation'
+        ru: 'Счёт обрабатывается (уже есть активная транзакция)',
+        uz: 'Hisob qayta ishlanmoqda (faol tranzaksiya mavjud)',
+        en: 'Invoice is being processed (active transaction exists)'
       }
     }
   }
