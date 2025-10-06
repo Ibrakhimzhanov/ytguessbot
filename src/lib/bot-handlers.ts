@@ -274,6 +274,27 @@ bot.on('contact', async (ctx) => {
   if (!contact || !telegramId) return
 
   try {
+    // Foydalanuvchini yaratish yoki yangilash
+    await prisma.user.upsert({
+      where: { telegramId: BigInt(telegramId) },
+      create: {
+        telegramId: BigInt(telegramId),
+        username: ctx.from?.username || null,
+        firstName: ctx.from?.first_name || null,
+        phoneNumber: contact.phone_number,
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim(),
+        isPaid: false
+      },
+      update: {
+        phoneNumber: contact.phone_number,
+        username: ctx.from?.username,
+        firstName: ctx.from?.first_name,
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim()
+      }
+    })
+
+    console.log(`✅ Contact saved for user ${telegramId}: ${contact.phone_number}`)
+
     // Kontakt saqlanganidan so'ng asosiy menyuga qaytish
     const mainKeyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
