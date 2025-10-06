@@ -382,19 +382,32 @@ async function createTransaction(params: any) {
   
   // Проверка, что для этого заказа еще нет активной транзакции
   if (payment.paymeId && payment.status === 'PENDING') {
-    // Если транзакция уже существует, просто вернуть её данные
-    return {
-      create_time: payment.createdAt.getTime(),
-      transaction: payment.orderNumber.toString(),
-      state: 1
+    // Если это та же транзакция (повторный запрос), вернуть её данные
+    if (payment.paymeId === id) {
+      return {
+        create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : time,
+        transaction: payment.orderNumber.toString(),
+        state: 1
+      }
+    }
+    
+    // Если это ДРУГАЯ транзакция, а заказ уже в ожидании - ошибка -31008
+    throw {
+      code: -31008,
+      message: {
+        ru: 'Невозможно выполнить операцию',
+        uz: 'Operatsiyani bajarish mumkin emas',
+        en: 'Unable to perform operation'
+      }
     }
   }
 
-  // Обновить статус и добавить paymeId
+  // Обновить статус и добавить paymeId и время создания транзакции
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       paymeId: id,
+      paymeCreateTime: BigInt(time),
       status: 'PENDING'
     }
   })
