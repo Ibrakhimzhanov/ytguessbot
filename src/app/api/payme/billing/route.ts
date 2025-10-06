@@ -652,20 +652,15 @@ async function getStatement(params: any) {
   })
 
   const transactions = payments.map(payment => {
-    let state: number
-    switch (payment.status) {
-      case 'PENDING':
-        state = 1
-        break
-      case 'PAID':
-        state = 2
-        break
-      case 'CANCELLED':
-        state = -2
-        break
-      default:
-        state = 0
-    }
+    const performed = payment.paymePerformTime && payment.paymePerformTime > 0n
+    
+    const state = payment.status === 'CANCELLED'
+      ? (performed ? -2 : -1)
+      : payment.status === 'PAID'
+      ? 2
+      : payment.status === 'PENDING'
+      ? 1
+      : 0
 
     return {
       id: payment.paymeId,
@@ -676,7 +671,7 @@ async function getStatement(params: any) {
         user_id: payment.userId
       },
       create_time: Number(payment.paymeCreateTime!),
-      perform_time: payment.completedAt?.getTime() || 0,
+      perform_time: Number(payment.paymePerformTime || 0n),
       cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
       transaction: payment.orderNumber.toString(),
       state,
