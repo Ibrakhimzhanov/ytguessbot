@@ -361,14 +361,30 @@ async function createTransaction(params: any) {
   // Проверяем возможность создания (выбросит исключение если не пройдет)
   await checkPerformTransaction(params)
 
-  // Найти платеж (после checkPerformTransaction точно существует)
   const orderNumber = parseInt(account.order_id)
-  const payment = await prisma.payment.findFirst({
-    where: { orderNumber },
+  
+  // Сначала ищем по paymeId (для повторных запросов)
+  let payment = await prisma.payment.findFirst({
+    where: { paymeId: id },
     include: { user: true }
   })
 
-  // Дополнительная проверка (не должна сработать, но на всякий случай)
+  // Если нашли - это повторный запрос, возвращаем сохраненные данные
+  if (payment) {
+    return {
+      create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : time,
+      transaction: payment.orderNumber.toString(),
+      state: 1
+    }
+  }
+
+  // Если не нашли по paymeId - ищем заказ по номеру
+  payment = await prisma.payment.findFirst({
+    where: { orderNumber },
+    orderBy: { createdAt: 'desc' }, // берем самый свежий
+    include: { user: true }
+  })
+
   if (!payment) {
     throw { 
       code: -31050, 
@@ -380,18 +396,8 @@ async function createTransaction(params: any) {
     }
   }
   
-  // Проверка, что для этого заказа еще нет активной транзакции
+  // Если заказ уже занят другой транзакцией - ошибка -31008
   if (payment.paymeId && payment.status === 'PENDING') {
-    // Если это та же транзакция (повторный запрос), вернуть её данные
-    if (payment.paymeId === id) {
-      return {
-        create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : time,
-        transaction: payment.orderNumber.toString(),
-        state: 1
-      }
-    }
-    
-    // Если это ДРУГАЯ транзакция, а заказ уже в ожидании - ошибка -31008
     throw {
       code: -31008,
       message: {
@@ -402,7 +408,7 @@ async function createTransaction(params: any) {
     }
   }
 
-  // Обновить статус и добавить paymeId и время создания транзакции
+  // Создаем новую транзакцию
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
