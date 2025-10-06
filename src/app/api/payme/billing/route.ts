@@ -518,13 +518,13 @@ async function performTransaction(params: any) {
   try {
     await bot.telegram.sendMessage(
       payment.user.telegramId.toString(),
-      `🎉 Поздравляем! Ваш платеж успешно подтвержден!\n\n` +
-      `✅ Доступ к курсу активирован\n` +
-      `📋 Номер заказа: #${payment.orderNumber}\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n` +
-      `🎫 Ваш лотерейный номер: ${loteryId || payment.user.loteryId}\n\n` +
-      `📚 Используйте команду /mycourse для доступа к материалам курса.\n\n` +
-      `🎓 Приятного обучения!`
+      `🎉 Tabriklaymiz! Sizning to'lovingiz muvaffaqiyatli tasdiqlandi!\n\n` +
+      `✅ Kursga kirish faollashtirildi\n` +
+      `📋 Buyurtma raqami: #${payment.orderNumber}\n` +
+      `💰 Narx: ${(payment.amount / 100).toLocaleString()} сум\n` +
+      `🎫 Sizning lotereya raqamingiz: ${loteryId || payment.user.loteryId}\n\n` +
+      `📚 Kurs materiallariga kirish uchun /mycourse dan foydalaning.\n\n` +
+      `🎓 O'qishdan zavqlaning!`
     )
   } catch (error) {
     console.error('Failed to notify user via Telegram:', error)

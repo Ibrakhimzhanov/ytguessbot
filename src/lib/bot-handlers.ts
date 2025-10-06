@@ -23,14 +23,14 @@ bot.command('buy', async (ctx: BotContext) => {
   if (!telegramId) return
 
   try {
-    // Kurs allaqachon to'langanligini tekshirish
+    // Kurs  to'langanligini tekshirish
     const user = await prisma.user.findUnique({
       where: { telegramId: BigInt(telegramId) }
     })
 
     if (user?.isPaid) {
       await ctx.reply(
-        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
         `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
         'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
@@ -189,12 +189,12 @@ bot.command('mycourse', async (ctx: BotContext) => {
 `🎓 Kursga xush kelibsiz!\n\n` +
       `✅ Sizning kirishingiz faollashtirildi\n\n` +
       `📚 Mavjud materiallar:\n` +
-      `•✅ Barcha video darslar\n` +
-      `•✅ Amaliy topshiriqlar\n` +
-      `•✅ Kurator yordami\n` +
-      `•✅ Kurator va boshqa talabalar bilan chat\n` +
-      `•✅ Tugatish sertifikati\n\n` +
-      `•🎁 Bonus: siz Malibu avtomobili o'yinida ishtirokchi bo'ldingiz\n\n` +
+      `✅ Barcha video darslar\n` +
+      `✅ Amaliy topshiriqlar\n` +
+      `✅ Kurator yordami\n` +
+      `✅ Kurator va boshqa talabalar bilan chat\n` +
+      `✅ Tugatish sertifikati\n\n` +
+      `🎁 Bonus: siz Malibu avtomobili o'yinida ishtirokchi bo'ldingiz\n\n` +
       `Bo\'limni tanlang:`,
       keyboard
     )
@@ -217,7 +217,7 @@ bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
 
     if (user?.isPaid) {
       await ctx.reply(
-        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
         `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
         'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
@@ -360,7 +360,7 @@ bot.action('pay_payme', async (ctx: BotContext) => {
 
     if (user.isPaid) {
       await ctx.reply(
-        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
         `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
         'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
