@@ -515,13 +515,18 @@ async function cancelTransaction(params: any) {
   }
 
   if (payment.status === 'CANCELLED') {
+    // Если уже отменена, вернуть сохраненное состояние
+    const wasPaid = payment.completedAt && payment.completedAt > payment.createdAt
     return {
       cancel_time: payment.completedAt?.getTime() || Date.now(),
       transaction: payment.orderNumber.toString(),
-      state: -2
+      state: wasPaid ? -2 : -1
     }
   }
 
+  // Запоминаем статус до отмены
+  const wasPaid = payment.status === 'PAID'
+  
   // Отменяем платеж
   const now = new Date()
   await prisma.payment.update({
@@ -533,7 +538,7 @@ async function cancelTransaction(params: any) {
   })
 
   // Если был оплачен, убираем статус у пользователя
-  if (payment.status === 'PAID') {
+  if (wasPaid) {
     await prisma.user.update({
       where: { id: payment.userId },
       data: { isPaid: false }
@@ -562,7 +567,7 @@ async function cancelTransaction(params: any) {
   return {
     cancel_time: now.getTime(),
     transaction: payment.orderNumber.toString(),
-    state: -2
+    state: wasPaid ? -2 : -1  // -2 если был perform, -1 если не был
   }
 }
 
@@ -603,7 +608,7 @@ async function checkTransaction(params: any) {
   }
 
   return {
-    create_time: payment.createdAt.getTime(),
+    create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
     perform_time: payment.completedAt?.getTime() || 0,
     cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
     transaction: payment.orderNumber.toString(),
@@ -647,13 +652,13 @@ async function getStatement(params: any) {
 
     return {
       id: payment.paymeId,
-      time: payment.createdAt.getTime(),
+      time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
       amount: payment.amount,
       account: {
         order_id: payment.orderNumber.toString(),
         user_id: payment.userId
       },
-      create_time: payment.createdAt.getTime(),
+      create_time: payment.paymeCreateTime ? Number(payment.paymeCreateTime) : payment.createdAt.getTime(),
       perform_time: payment.completedAt?.getTime() || 0,
       cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
       transaction: payment.orderNumber.toString(),
