@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
       // Если не удалось прочитать body, продолжаем без id
     }
     
+    console.log('🔐 Checking authorization...')
+    
     if (!authHeader) {
       return NextResponse.json({
         id: requestId,
@@ -93,6 +95,7 @@ export async function POST(req: NextRequest) {
 
     // Проверяем базовую авторизацию от Payme
     const expectedAuth = Buffer.from(`Paycom:${process.env.PAYME_X_AUTH?.split(':')[1] || ''}`).toString('base64')
+    console.log('🔑 Auth check: header present, validating...')
     if (authHeader !== `Basic ${expectedAuth}`) {
       return NextResponse.json({
         id: requestId,
@@ -106,6 +109,8 @@ export async function POST(req: NextRequest) {
         }
       }, { status: 200 })
     }
+    
+    console.log('✅ Authorization passed')
     
     // Если body уже прочитан, используем его, иначе это ошибка
     if (!body) {
@@ -122,8 +127,8 @@ export async function POST(req: NextRequest) {
       }, { status: 200 })
     }
 
+    console.log('📦 Creating response object...')
     const response: MerchantResponse = { id: body.id }
-
     console.log(`🔀 Switch: method=${body.method}`)
 
     switch (body.method) {
