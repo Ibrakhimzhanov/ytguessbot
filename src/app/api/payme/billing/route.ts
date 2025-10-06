@@ -466,11 +466,24 @@ async function performTransaction(params: any) {
     }
   }
 
+  // Идемпотентность: если уже оплачена, вернуть сохраненные данные
   if (payment.status === 'PAID') {
     return {
       perform_time: Number(payment.paymePerformTime || 0n),
       transaction: payment.orderNumber.toString(),
       state: 2
+    }
+  }
+
+  // Нельзя выполнить отмененную транзакцию
+  if (payment.status === 'CANCELLED') {
+    throw {
+      code: -31008,
+      message: {
+        ru: 'Невозможно выполнить операцию',
+        uz: 'Operatsiyani bajarish mumkin emas',
+        en: 'Unable to perform operation'
+      }
     }
   }
 
