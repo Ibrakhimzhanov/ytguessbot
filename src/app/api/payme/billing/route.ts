@@ -69,10 +69,6 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json()
       requestId = body.id
-      console.log('📋 Payme Request:')
-      console.log('  Method:', body.method)
-      console.log('  Params:', JSON.stringify(body.params, null, 2))
-      console.log('  ID:', body.id)
     } catch {
       // Если не удалось прочитать body, продолжаем без id
     }
@@ -117,10 +113,6 @@ export async function POST(req: NextRequest) {
         })()
 
     const expectedAuth = Buffer.from(`Paycom:${basicKey}`).toString('base64')
-    console.log('🔍 DEBUG: Using KEY length:', basicKey ? basicKey.length : 0)
-    console.log('🔍 DEBUG: Expected auth:', `Basic ${expectedAuth}`)
-    console.log('🔍 DEBUG: Received auth:', authHeader)
-    console.log('🔍 DEBUG: Match:', authHeader === `Basic ${expectedAuth}`)
     if (authHeader !== `Basic ${expectedAuth}`) {
       return NextResponse.json({
         id: requestId,
@@ -134,8 +126,6 @@ export async function POST(req: NextRequest) {
         }
       }, { status: 200 })
     }
-    
-    console.log('✅ Authorization passed')
     
     // Если body уже прочитан, используем его, иначе это ошибка
     if (!body) {
@@ -152,21 +142,14 @@ export async function POST(req: NextRequest) {
       }, { status: 200 })
     }
 
-    console.log('📦 Creating response object...')
     const response: MerchantResponse = { id: body.id }
-    console.log(`🔀 Switch: method=${body.method}`)
-
     switch (body.method) {
       case MerchantMethod.CHECK_PERFORM_TRANSACTION:
-        console.log('➡️ Calling checkPerformTransaction...')
         response.result = await checkPerformTransaction(body.params)
-        console.log('✅ checkPerformTransaction completed')
         break
 
       case MerchantMethod.CREATE_TRANSACTION:
-        console.log('➡️ Calling createTransaction...')
         response.result = await createTransaction(body.params)
-        console.log('✅ createTransaction completed')
         break
 
       case MerchantMethod.PERFORM_TRANSACTION:
@@ -200,8 +183,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(response)
 
   } catch (error: any) {
-    console.error('❌ Payme Billing Error:', error)
-    
     // Если это ошибка от методов Payme с кодом и сообщением
     if (error && typeof error === 'object' && 'code' in error) {
       return NextResponse.json({
@@ -240,10 +221,7 @@ export async function POST(req: NextRequest) {
  * Проверка возможности создания транзакции
  */
 async function checkPerformTransaction(params: any) {
-  console.log('⚡ checkPerformTransaction called with:', JSON.stringify(params))
-  
   const { account, amount } = params
-
   // Проверка наличия account
   if (!account) {
     throw { 
@@ -286,12 +264,6 @@ async function checkPerformTransaction(params: any) {
     where: { orderNumber },
     include: { user: true }
   })
-
-  console.log(`🔍 Payment lookup: orderNumber=${orderNumber}, found=${!!payment}`)
-  if (payment) {
-    console.log(`📦 Payment details: amount=${payment.amount}, status=${payment.status}`)
-  }
-
   if (!payment) {
     throw { 
       code: -31050, 
@@ -329,8 +301,6 @@ async function checkPerformTransaction(params: any) {
   // Преобразуем оба значения в числа для корректного сравнения
   const requestAmount = Number(amount)
   const expectedAmount = Number(payment.amount)
-  
-  console.log(`💰 Amount check: received=${requestAmount}, expected=${expectedAmount}`)
   
   if (requestAmount !== expectedAmount) {
     throw { 
