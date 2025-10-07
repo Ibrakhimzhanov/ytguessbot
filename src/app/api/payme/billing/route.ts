@@ -92,28 +92,32 @@ export async function POST(req: NextRequest) {
     // Проверяем базовую авторизацию от Payme
     // Payme отправляет Authorization: Basic base64(Paycom:KEY)
     // где KEY — TEST_KEY в песочнице или KEY в продакшене
-    // Нормализуем пароль из переменных окружения:
-    //   - PAYME_BASIC_KEY (если задан) содержит только KEY
-    //   - PAYME_X_AUTH может быть в форматах:
-    //       * "merchant_id:KEY"
-    //       * "Paycom:KEY"
-    //   В итоге формируем Basic по правилу base64("Paycom:" + KEY)
-    const rawEnv = process.env.PAYME_X_AUTH || ''
-    const basicKey = process.env.PAYME_BASIC_KEY
-      ? process.env.PAYME_BASIC_KEY
-      : ((): string => {
-          if (!rawEnv) return ''
-          // Если значение уже в виде "Paycom:KEY" или "merchant:KEY"
-          if (rawEnv.includes(':')) {
-            const parts = rawEnv.split(':')
-            return parts[1] || ''
+    // PAYME_X_AUTH должен быть в формате "Paycom:KEY" (логин всегда Paycom!)
+    const paymeAuth = process.env.PAYME_X_AUTH || ''
+    
+    if (!paymeAuth) {
+      console.error('❌ PAYME_X_AUTH not configured in environment')
+      return NextResponse.json({
+        id: requestId,
+        error: {
+          code: -32504,
+          message: {
+            ru: 'Ключ авторизации не настроен',
+            uz: 'Avtorizatsiya kaliti sozlanmagan',
+            en: 'Authorization key not configured'
           }
-          // Если в переменной уже только KEY
-          return rawEnv
-        })()
+        }
+      }, { status: 200 })
+    }
 
-    const expectedAuth = Buffer.from(`Paycom:${basicKey}`).toString('base64')
-    if (authHeader !== `Basic ${expectedAuth}`) {
+    const expectedAuth = `Basic ${Buffer.from(paymeAuth).toString('base64')}`
+    
+    console.log('🔐 Authorization check:')
+    console.log('   Received:', authHeader?.substring(0, 20) + '...')
+    console.log('   Expected:', expectedAuth.substring(0, 20) + '...')
+    
+    if (authHeader !== expectedAuth) {
+      console.error('❌ Authorization mismatch')
       return NextResponse.json({
         id: requestId,
         error: {
@@ -126,6 +130,8 @@ export async function POST(req: NextRequest) {
         }
       }, { status: 200 })
     }
+    
+    console.log('✅ Authorization successful')
     
     // Если body уже прочитан, используем его, иначе это ошибка
     if (!body) {
