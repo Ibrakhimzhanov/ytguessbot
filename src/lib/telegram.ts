@@ -35,7 +35,7 @@ bot.start((ctx) => {
       `Bu yerda siz YouTubeni noldan professional darajagacha o'rganish va  monetizatsiyaga chiqishga yordam beradigan kursga to'liq kirish huquqini sotib olishingiz mumkin.\n\n` +
       `Bizning maqsadimiz eng qulay narxda sizga kanal rivojlantirish va YouTube'da daromadni oshirish uchun barcha vositalar va bilimlarni berish 🚀\n\n` +
       `📺 Bizning kurs haqida to'liq videomizni tomosha qiling:\n` +
-      `https://www.youtube.com/watch?v=6BaVB8pU3Lw\n\n` +
+      `https://youtu.be/w7WciDsnhNQ?si=x-FbeouP0R3IrwLC\n\n` +
       `Sizda admin panelga kirish huquqi bor.\n\n` +
       `Kerakli bo'limni tanlang:`,
       keyboard
@@ -51,7 +51,7 @@ bot.start((ctx) => {
       `Bu yerda siz YouTubeni noldan professional darajagacha o'rganish va barqaror monetizatsiyaga chiqishga yordam beradigan kursga to'liq kirish huquqini sotib olishingiz mumkin.\n\n` +
       `Bizning maqsadimiz — eng qulay narxda sizga kanal rivojlantirish va YouTube'da daromadni oshirish uchun barcha vositalar va bilimlarni berish 🚀\n\n` +
       `📺 Bizning kurs haqida to'liq videomizni tomosha qiling:\n` +
-      `https://www.youtube.com/watch?v=6BaVB8pU3Lw\n\n` +
+      `https://youtu.be/w7WciDsnhNQ?si=x-FbeouP0R3IrwLC\n\n` +
       `Kerakli bo'limni tanlang:`,
       keyboard
     )
