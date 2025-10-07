@@ -10,7 +10,7 @@ import { showAdminPanel, handleExportXLSX, } from './admin/admin-handlers'
 
 const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000') // tiyin hisobida narx (2,500,000 so'm)
 const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || '68dfaed6eb0789cb092fb03e'
-const IS_TEST_MODE = process.env.NODE_ENV !== 'production'
+const IS_TEST_MODE = process.env.PAYME_IS_TEST === 'true'
 
 // Debug logging
 console.log('💰 COURSE_PRICE:', COURSE_PRICE, 'tiyin =', (COURSE_PRICE / 100).toLocaleString(), 'so\'m')
