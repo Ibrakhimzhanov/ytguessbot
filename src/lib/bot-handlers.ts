@@ -38,7 +38,6 @@ bot.command('buy', async (ctx: BotContext) => {
 
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.callback('💳 Payme orqali to\'lash', 'pay_payme')],
-      [Markup.button.callback('📞 Admin bilan bog\'lanish', 'contact_admin')]
     ])
 
     await ctx.reply(
