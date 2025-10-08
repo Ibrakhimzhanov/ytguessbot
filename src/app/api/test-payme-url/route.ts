@@ -5,8 +5,8 @@ import { generatePaymeCheckoutUrl } from '@/lib/payme/payme-utils'
 export async function GET(req: NextRequest) {
   try {
     const COURSE_PRICE = parseInt(process.env.COURSE_PRICE || '250000000')
-    const PAYME_MERCHANT_ID = process.env.PAYME_X_AUTH?.split(':')[0] || ''
-    const IS_TEST_MODE = process.env.NODE_ENV !== 'production'
+    const PAYME_MERCHANT_ID = process.env.PAYME_MERCHANT_ID || '68dfaed6eb0789cb092fb03e'
+    const IS_TEST_MODE = process.env.PAYME_IS_TEST === 'true'
 
     // Генерируем тестовый URL
     const testOrderId = '999'
