@@ -13,7 +13,7 @@ export async function adminMiddleware(ctx: BotContext, next: () => Promise<void>
   const telegramId = ctx.from?.id
   
   if (!telegramId || !hasAdminAccess(telegramId)) {
-    await ctx.reply('❌ У вас нет доступа к админ-панели.')
+    await ctx.reply('❌ Sizda admin panelga kirish huquqi yo\'q.')
     return
   }
   
@@ -30,14 +30,14 @@ export async function showAdminPanel(ctx: BotContext) {
   const role = getRoleText(telegramId)
   
   const keyboard = Markup.keyboard([
-    ['🗂 Экспорт участников', '📊 Статистика'],
-    ['🔙 Назад в главное меню']
+    ['🗂 Ishtirokchilarni eksport qilish', '📊 Statistika'],
+    ['🔙 Asosiy menyuga qaytish']
   ]).resize()
   
   await ctx.reply(
-    `🔧 Админ-панель\n\n` +
-    `👤 Ваша роль: ${role}\n\n` +
-    `Выберите действие:`,
+    `🔧 Admin paneli\n\n` +
+    `👤 Sizning rolingiz: ${role}\n\n` +
+    `Harakatni tanlang:`,
     keyboard
   )
 }
@@ -47,19 +47,19 @@ export async function showAdminPanel(ctx: BotContext) {
  */
 export async function handleExportXLSX(ctx: BotContext) {
   try {
-    await ctx.reply('⏳ Генерирую XLSX файл...')
+    await ctx.reply('⏳ XLSX fayl yaratilmoqda...')
     
     const buffer = await generateUsersXLSX()
     const filename = getXLSXFilename()
     
     await ctx.replyWithDocument(
       { source: buffer, filename },
-      { caption: '📊 Экспорт пользователей курса' }
+      { caption: '📊 Kurs ishtirokchilarini eksport qilish' }
     )
     
-    console.log(`✅ XLSX экспорт отправлен: ${filename}`)
+    console.log(`✅ XLSX eksport yuborildi: ${filename}`)
   } catch (error) {
     console.error('❌ Error exporting XLSX:', error)
-    await ctx.reply('❌ Ошибка при генерации файла')
+    await ctx.reply('❌ Fayl yaratishda xatolik')
   }
 }

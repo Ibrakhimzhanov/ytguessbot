@@ -23,14 +23,15 @@ bot.command('buy', async (ctx: BotContext) => {
   if (!telegramId) return
 
   try {
-    // Kurs allaqachon to'langanligini tekshirish
+    // Kurs  to'langanligini tekshirish
     const user = await prisma.user.findUnique({
       where: { telegramId: BigInt(telegramId) }
     })
 
     if (user?.isPaid) {
       await ctx.reply(
-        '✅ Siz allaqachon kursni to\'ladingiz!\n\n' +
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
         'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
       )
       return
@@ -89,11 +90,13 @@ bot.command('status', async (ctx: BotContext) => {
                    `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
     }
 
+    const loteryInfo = user.isPaid && user.loteryId ? `\n🎫 Lotereya raqamingiz: ${user.loteryId}` : ''
+
     await ctx.reply(
       `📊 Sizning holatingiz\n\n` +
       `👤 Ism: ${user.fullName || user.firstName}\n` +
       `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
-      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${loteryInfo}${paymentInfo}\n\n` +
       (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
     )
   } catch (error) {
@@ -136,11 +139,13 @@ bot.hears('💰 To\'lovni tekshirish', async (ctx: BotContext) => {
                    `🔖 Holat: ${lastPayment.status === 'PAID' ? '✅ To\'langan' : lastPayment.status === 'PENDING' ? '⏳ Kutilmoqda' : '❌ Bekor qilingan'}`
     }
 
+    const loteryInfo = user.isPaid && user.loteryId ? `\n🎫 Lotereya raqamingiz: ${user.loteryId}` : ''
+
     await ctx.reply(
       `📊 Sizning holatingiz\n\n` +
       `👤 Ism: ${user.fullName || user.firstName}\n` +
       `📱 Telefon: ${user.phoneNumber || 'Ko\'rsatilmagan'}\n` +
-      `${statusIcon} Kursga kirish: ${statusText}${paymentInfo}\n\n` +
+      `${statusIcon} Kursga kirish: ${statusText}${loteryInfo}${paymentInfo}\n\n` +
       (user.isPaid ? '📚 Materiallarga kirish uchun /mycourse dan foydalaning' : '💳 Kursni sotib olish uchun /buy dan foydalaning')
     )
   } catch (error) {
@@ -176,19 +181,19 @@ bot.command('mycourse', async (ctx: BotContext) => {
     // Kurs materiallarini yuborish
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.url('📄 Kurs', 'https://t.me/+lUQ9hk-_rzw3YzMy')],
-      [Markup.button.url('💬 Yopiq guruhga qo\'shilish', 'https://t.me/support_chat')],
+      [Markup.button.url('💬 Yopiq guruhga qo\'shilish', 'https://t.me/+LfbVBp8V17djMzNi')],
     ])
 
     await ctx.reply(
 `🎓 Kursga xush kelibsiz!\n\n` +
       `✅ Sizning kirishingiz faollashtirildi\n\n` +
       `📚 Mavjud materiallar:\n` +
-      `•✅ Barcha video darslar\n` +
-      `•✅ Amaliy topshiriqlar\n` +
-      `•✅ Kurator yordami\n` +
-      `•✅ Kurator va boshqa talabalar bilan chat\n` +
-      `•✅ Tugatish sertifikati\n\n` +
-      `•🎁 Bonus: siz Malibu avtomobili o'yinida ishtirokchi bo'ldingiz\n\n` +
+      `✅ Barcha video darslar\n` +
+      `✅ Amaliy topshiriqlar\n` +
+      `✅ Kurator yordami\n` +
+      `✅ Kurator va boshqa talabalar bilan chat\n` +
+      `✅ Tugatish sertifikati\n\n` +
+      `🎁 Bonus: siz Malibu avtomobili o'yinida ishtirokchi bo'ldingiz\n\n` +
       `Bo\'limni tanlang:`,
       keyboard
     )
@@ -200,19 +205,41 @@ bot.command('mycourse', async (ctx: BotContext) => {
 
 // Telefon raqamini so'rash handleri
 bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
-  const keyboard = Markup.keyboard([
-    [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
-  ]).resize()
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
 
-  await ctx.reply(
-    'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
-    'Kontaktni ulashish uchun quyidagi tugmani bosing:',
-    keyboard
-  )
+  try {
+    // Kurs allaqachon to'langanligini tekshirish
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) }
+    })
+
+    if (user?.isPaid) {
+      await ctx.reply(
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
+      return
+    }
+
+    const keyboard = Markup.keyboard([
+      [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
+    ]).resize()
+
+    await ctx.reply(
+      'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
+      'Kontaktni ulashish uchun quyidagi tugmani bosing:',
+      keyboard
+    )
+  } catch (error) {
+    console.error('Error in buy course handler:', error)
+    await ctx.reply('❌ Xatolik yuz berdi. Keyinroq urinib ko\'ring.')
+  }
 })
 
-// "Kontaktlar" tugmasi handleri
-bot.hears('📞 Kontaktlar', async (ctx: BotContext) => {
+// "Aloqa" tugmasi handleri
+bot.hears('📞 Aloqa', async (ctx: BotContext) => {
   await ctx.reply(
     '📞 Call Center:\n\n' +
     '☎️ +998781136012\n' +
@@ -246,6 +273,27 @@ bot.on('contact', async (ctx) => {
   if (!contact || !telegramId) return
 
   try {
+    // Foydalanuvchini yaratish yoki yangilash
+    await prisma.user.upsert({
+      where: { telegramId: BigInt(telegramId) },
+      create: {
+        telegramId: BigInt(telegramId),
+        username: ctx.from?.username || null,
+        firstName: ctx.from?.first_name || null,
+        phoneNumber: contact.phone_number,
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim(),
+        isPaid: false
+      },
+      update: {
+        phoneNumber: contact.phone_number,
+        username: ctx.from?.username,
+        firstName: ctx.from?.first_name,
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim()
+      }
+    })
+
+    console.log(`✅ Contact saved for user ${telegramId}: ${contact.phone_number}`)
+
     // Kontakt saqlanganidan so'ng asosiy menyuga qaytish
     const mainKeyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
@@ -309,6 +357,15 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       return
     }
 
+    if (user.isPaid) {
+      await ctx.reply(
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
+      return
+    }
+
     console.log(`🔵 pay_payme: To\'lov yaratilmoqda, COURSE_PRICE = ${COURSE_PRICE}`)
 
     // To'lov yozuvi yaratish
@@ -328,7 +385,6 @@ bot.action('pay_payme', async (ctx: BotContext) => {
       PAYME_MERCHANT_ID,
       {
         order_id: payment.orderNumber.toString()
-        // user_id o'chirildi - Payme buni talab qilmaydi
       },
       COURSE_PRICE,
       IS_TEST_MODE
@@ -396,6 +452,7 @@ bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
     if (payment.status === 'PAID') {
       await ctx.reply(
         '✅ To\'lovingiz allaqachon tasdiqlangan! Kursga kirish faol.\n\n' +
+        `🎫 Sizning lotereya raqamingiz: ${payment.user.loteryId}\n\n` +
         '📚 Kurs materiallariga kirish uchun /mycourse dan foydalaning.'
       )
       return
@@ -433,10 +490,35 @@ bot.action(/check_payment_(.+)/, async (ctx: BotContext) => {
 })
 
 // Administrativ buyruqlar
+bot.command('admin_check', async (ctx: BotContext) => {
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
+
+  const hasAccess = hasAdminAccess(telegramId)
+  const roleText = getRoleText(telegramId)
+  
+  await ctx.reply(
+    `🔐 Admin status check:\n\n` +
+    `👤 Your ID: ${telegramId}\n` +
+    `🎭 Role: ${roleText}\n` +
+    `✅ Admin Access: ${hasAccess ? 'Yes' : 'No'}`
+  )
+})
+
 bot.command('admin_stats', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
+  console.log('📊 admin_stats called by:', telegramId)
   
-  if (!telegramId || !hasAdminAccess(telegramId)) {
+  if (!telegramId) {
+    console.log('❌ No telegramId')
+    return
+  }
+  
+  const hasAccess = hasAdminAccess(telegramId)
+  console.log('🔐 hasAdminAccess:', hasAccess)
+  
+  if (!hasAccess) {
+    console.log('❌ Access denied for:', telegramId)
     return
   }
 

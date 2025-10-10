@@ -1,6 +1,7 @@
 import { Telegraf, Context, Markup } from 'telegraf'
 import dotenv from 'dotenv'
 import { hasAdminAccess, getRoleText } from './admin/roles'
+import { prisma } from './prisma'
 
 // Загружаем переменные окружения
 dotenv.config()
@@ -16,8 +17,33 @@ if (!process.env.BOT_TOKEN) {
 const bot = new Telegraf<BotContext>(process.env.BOT_TOKEN)
 
 // Настройка бота
-bot.start((ctx) => {
+bot.start(async (ctx) => {
   const telegramId = ctx.from?.id
+  if (!telegramId) return
+
+  try {
+    // Создаем или обновляем пользователя в базе данных
+    await prisma.user.upsert({
+      where: { telegramId: BigInt(telegramId) },
+      create: {
+        telegramId: BigInt(telegramId),
+        username: ctx.from?.username || null,
+        firstName: ctx.from?.first_name || null,
+        phoneNumber: '',
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim(),
+        isPaid: false
+      },
+      update: {
+        username: ctx.from?.username,
+        firstName: ctx.from?.first_name,
+        fullName: `${ctx.from?.first_name || ''} ${ctx.from?.last_name || ''}`.trim()
+      }
+    })
+
+    console.log(`✅ User ${telegramId} created/updated in database`)
+  } catch (error) {
+    console.error('Error creating user:', error)
+  }
   
   // Проверяем является ли пользователь админом
   const isAdmin = telegramId ? hasAdminAccess(telegramId) : false
@@ -27,7 +53,7 @@ bot.start((ctx) => {
     const keyboard = Markup.keyboard([
       ['🔧 Admin panel'],
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Kontaktlar', '📋 Kurs haqida']
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(
@@ -43,7 +69,7 @@ bot.start((ctx) => {
   } else {
     const keyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Kontaktlar', '📋 Kurs haqida']
+      ['📞 Aloqa', '📋 Kurs haqida']
     ]).resize()
     
     ctx.reply(

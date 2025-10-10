@@ -69,10 +69,6 @@ export async function POST(req: NextRequest) {
     try {
       body = await req.json()
       requestId = body.id
-      console.log('📋 Payme Request:')
-      console.log('  Method:', body.method)
-      console.log('  Params:', JSON.stringify(body.params, null, 2))
-      console.log('  ID:', body.id)
     } catch {
       // Если не удалось прочитать body, продолжаем без id
     }
@@ -152,21 +148,14 @@ export async function POST(req: NextRequest) {
       }, { status: 200 })
     }
 
-    console.log('📦 Creating response object...')
     const response: MerchantResponse = { id: body.id }
-    console.log(`🔀 Switch: method=${body.method}`)
-
     switch (body.method) {
       case MerchantMethod.CHECK_PERFORM_TRANSACTION:
-        console.log('➡️ Calling checkPerformTransaction...')
         response.result = await checkPerformTransaction(body.params)
-        console.log('✅ checkPerformTransaction completed')
         break
 
       case MerchantMethod.CREATE_TRANSACTION:
-        console.log('➡️ Calling createTransaction...')
         response.result = await createTransaction(body.params)
-        console.log('✅ createTransaction completed')
         break
 
       case MerchantMethod.PERFORM_TRANSACTION:
@@ -200,8 +189,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(response)
 
   } catch (error: any) {
-    console.error('❌ Payme Billing Error:', error)
-    
     // Если это ошибка от методов Payme с кодом и сообщением
     if (error && typeof error === 'object' && 'code' in error) {
       return NextResponse.json({
@@ -240,10 +227,7 @@ export async function POST(req: NextRequest) {
  * Проверка возможности создания транзакции
  */
 async function checkPerformTransaction(params: any) {
-  console.log('⚡ checkPerformTransaction called with:', JSON.stringify(params))
-  
   const { account, amount } = params
-
   // Проверка наличия account
   if (!account) {
     throw { 
@@ -286,12 +270,6 @@ async function checkPerformTransaction(params: any) {
     where: { orderNumber },
     include: { user: true }
   })
-
-  console.log(`🔍 Payment lookup: orderNumber=${orderNumber}, found=${!!payment}`)
-  if (payment) {
-    console.log(`📦 Payment details: amount=${payment.amount}, status=${payment.status}`)
-  }
-
   if (!payment) {
     throw { 
       code: -31050, 
@@ -330,8 +308,6 @@ async function checkPerformTransaction(params: any) {
   const requestAmount = Number(amount)
   const expectedAmount = Number(payment.amount)
   
-  console.log(`💰 Amount check: received=${requestAmount}, expected=${expectedAmount}`)
-  
   if (requestAmount !== expectedAmount) {
     throw { 
       code: -31001, 
@@ -361,15 +337,29 @@ async function createTransaction(params: any) {
   // Проверяем возможность создания (выбросит исключение если не пройдет)
   await checkPerformTransaction(params)
 
-  // Найти платеж (после checkPerformTransaction точно существует)
   const orderNumber = parseInt(account.order_id)
-  const payment = await prisma.payment.findFirst({
-    where: { orderNumber },
-    include: { user: true }
+  
+  // Всегда ищем по paymeId с findUnique (требуется @unique индекс)
+  const existing = await prisma.payment.findUnique({
+    where: { paymeId: id }
   })
 
-  // Дополнительная проверка (не должна сработать, но на всякий случай)
-  if (!payment) {
+  // Если нашли - это повторный запрос, возвращаем ровно сохраненные данные
+  if (existing) {
+    return {
+      create_time: Number(existing.paymeCreateTime!),
+      transaction: existing.orderNumber.toString(),
+      state: 1
+    }
+  }
+
+  // Ищем заказ по номеру
+  const invoice = await prisma.payment.findFirst({
+    where: { orderNumber },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  if (!invoice) {
     throw { 
       code: -31050, 
       message: {
@@ -379,30 +369,76 @@ async function createTransaction(params: any) {
       }
     }
   }
-  
-  // Проверка, что для этого заказа еще нет активной транзакции
-  if (payment.paymeId && payment.status === 'PENDING') {
-    // Если транзакция уже существует, просто вернуть её данные
-    return {
-      create_time: payment.createdAt.getTime(),
-      transaction: payment.orderNumber.toString(),
-      state: 1
+
+  if (invoice.status === 'PAID') {
+    throw { 
+      code: -31051, 
+      message: {
+        ru: 'Заказ уже оплачен',
+        uz: 'Buyurtma allaqachon to\'langan',
+        en: 'Order already paid'
+      }
     }
   }
 
-  // Обновить статус и добавить paymeId
-  await prisma.payment.update({
-    where: { id: payment.id },
-    data: {
-      paymeId: id,
-      status: 'PENDING'
+  if (invoice.status === 'CANCELLED') {
+    throw { 
+      code: -31052, 
+      message: {
+        ru: 'Заказ отменен',
+        uz: 'Buyurtma bekor qilingan',
+        en: 'Order cancelled'
+      }
     }
-  })
+  }
+  
+  // Одна активная транзакция на заказ запрещена
+  if (invoice.paymeId && invoice.status === 'PENDING' && invoice.paymeId !== id) {
+    throw {
+      code: -31050,
+      message: {
+        ru: 'Счёт обрабатывается (уже есть активная транзакция)',
+        uz: 'Hisob qayta ishlanmoqda (faol tranzaksiya mavjud)',
+        en: 'Invoice is being processed (active transaction exists)'
+      }
+    }
+  }
 
-  return {
-    create_time: time,
-    transaction: payment.orderNumber.toString(),
-    state: 1
+  // Атомарно пишем и тут же читаем сохранённое значение
+  try {
+    const saved = await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: invoice.id },
+        data: {
+          paymeId: id,
+          paymeCreateTime: BigInt(time),
+          status: 'PENDING'
+        }
+      })
+      
+      return tx.payment.findUnique({
+        where: { id: invoice.id }
+      })
+    })
+
+    return {
+      create_time: Number(saved!.paymeCreateTime!),
+      transaction: saved!.orderNumber.toString(),
+      state: 1
+    }
+  } catch (e: any) {
+    // Race condition: другой запрос уже создал транзакцию с этим paymeId
+    if (e.code === 'P2002') {
+      const existing = await prisma.payment.findUnique({
+        where: { paymeId: id }
+      })
+      return {
+        create_time: Number(existing!.paymeCreateTime!),
+        transaction: existing!.orderNumber.toString(),
+        state: 1
+      }
+    }
+    throw e
   }
 }
 
@@ -428,47 +464,80 @@ async function performTransaction(params: any) {
     }
   }
 
+  // Идемпотентность: если уже оплачена, вернуть сохраненные данные
   if (payment.status === 'PAID') {
     return {
-      perform_time: payment.completedAt?.getTime() || Date.now(),
+      perform_time: Number(payment.paymePerformTime || 0n),
       transaction: payment.orderNumber.toString(),
       state: 2
     }
   }
 
+  // Нельзя выполнить отмененную транзакцию
+  if (payment.status === 'CANCELLED') {
+    throw {
+      code: -31008,
+      message: {
+        ru: 'Невозможно выполнить операцию',
+        uz: 'Operatsiyani bajarish mumkin emas',
+        en: 'Unable to perform operation'
+      }
+    }
+  }
+
   // Подтверждаем оплату
-  const now = new Date()
+  const now = Date.now()
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       status: 'PAID',
-      completedAt: now
+      completedAt: new Date(now),
+      paymePerformTime: BigInt(now)
     }
   })
+
+  // Генерируем уникальный 6-значный номер для лотереи
+  let loteryId: number | undefined
+  if (!payment.user.loteryId) {
+    let isUnique = false
+    while (!isUnique) {
+      loteryId = Math.floor(100000 + Math.random() * 900000)
+      const existing = await prisma.user.findUnique({
+        where: { loteryId }
+      })
+      if (!existing) {
+        isUnique = true
+      }
+    }
+  }
 
   // Обновляем статус пользователя
   await prisma.user.update({
     where: { id: payment.userId },
-    data: { isPaid: true }
+    data: { 
+      isPaid: true,
+      ...(loteryId && { loteryId })
+    }
   })
 
   // Уведомляем пользователя в Telegram
   try {
     await bot.telegram.sendMessage(
       payment.user.telegramId.toString(),
-      `🎉 Поздравляем! Ваш платеж успешно подтвержден!\n\n` +
-      `✅ Доступ к курсу активирован\n` +
-      `📋 Номер заказа: #${payment.orderNumber}\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n\n` +
-      `📚 Используйте команду /mycourse для доступа к материалам курса.\n\n` +
-      `🎓 Приятного обучения!`
+      `🎉 Tabriklaymiz! Sizning to'lovingiz muvaffaqiyatli tasdiqlandi!\n\n` +
+      `✅ Kursga kirish faollashtirildi\n` +
+      `📋 Buyurtma raqami: #${payment.orderNumber}\n` +
+      `💰 Narx: ${(payment.amount / 100).toLocaleString()} сум\n` +
+      `🎫 Sizning lotereya raqamingiz: ${loteryId || payment.user.loteryId}\n\n` +
+      `📚 Kurs materiallariga kirish uchun /mycourse dan foydalaning.\n\n` +
+      `🎓 O'qishdan zavqlaning!`
     )
   } catch (error) {
     console.error('Failed to notify user via Telegram:', error)
   }
 
   return {
-    perform_time: now.getTime(),
+    perform_time: now,
     transaction: payment.orderNumber.toString(),
     state: 2
   }
@@ -479,6 +548,18 @@ async function performTransaction(params: any) {
  */
 async function cancelTransaction(params: any) {
   const { id, reason } = params
+
+  // 1) Валидация reason
+  if (reason !== undefined && (typeof reason !== 'number' || reason < 1 || reason > 7)) {
+    throw {
+      code: -31050,
+      message: {
+        ru: 'Неверная причина отмены',
+        uz: 'Bekor qilish sababi noto\'g\'ri',
+        en: 'Invalid cancellation reason'
+      }
+    }
+  }
 
   const payment = await prisma.payment.findFirst({
     where: { paymeId: id }
@@ -495,26 +576,38 @@ async function cancelTransaction(params: any) {
     }
   }
 
+  // 2) Идемпотентность: если уже отменена, вернуть сохраненные данные
   if (payment.status === 'CANCELLED') {
+    const cancelled = Number(payment.paymeCancelTime || 0n)
+    const state = payment.paymePerformTime ? -2 : -1
     return {
-      cancel_time: payment.completedAt?.getTime() || Date.now(),
+      cancel_time: cancelled,
       transaction: payment.orderNumber.toString(),
-      state: -2
+      state
     }
   }
 
-  // Отменяем платеж
-  const now = new Date()
+  // 3) Вычисляем состояние после отмены (до perform = -1, после = -2)
+  const state = payment.paymePerformTime ? -2 : -1
+  const now = Date.now()
+  const cancelReason = typeof reason === 'number' ? reason : 5
+
+  // Запоминаем статус до отмены
+  const wasPaid = payment.status === 'PAID'
+  
+  // 4) Сохраняем фиксированное время отмены и причину
   await prisma.payment.update({
     where: { id: payment.id },
     data: {
       status: 'CANCELLED',
-      completedAt: now
+      paymeCancelTime: BigInt(now),
+      paymeCancelReason: cancelReason,
+      completedAt: new Date(now)
     }
   })
 
   // Если был оплачен, убираем статус у пользователя
-  if (payment.status === 'PAID') {
+  if (wasPaid) {
     await prisma.user.update({
       where: { id: payment.userId },
       data: { isPaid: false }
@@ -541,9 +634,9 @@ async function cancelTransaction(params: any) {
   }
 
   return {
-    cancel_time: now.getTime(),
+    cancel_time: now,
     transaction: payment.orderNumber.toString(),
-    state: -2
+    state  // -2 если был perform (paymePerformTime), -1 если не был
   }
 }
 
@@ -569,27 +662,24 @@ async function checkTransaction(params: any) {
   }
 
   let state: number
-  switch (payment.status) {
-    case 'PENDING':
-      state = 1
-      break
-    case 'PAID':
-      state = 2
-      break
-    case 'CANCELLED':
-      state = -2
-      break
-    default:
-      state = 0
+  if (payment.status === 'CANCELLED') {
+    // Если была perform (paymePerformTime есть) → -2, иначе → -1
+    state = payment.paymePerformTime ? -2 : -1
+  } else if (payment.status === 'PAID') {
+    state = 2
+  } else if (payment.status === 'PENDING') {
+    state = 1
+  } else {
+    state = 0
   }
 
   return {
-    create_time: payment.createdAt.getTime(),
-    perform_time: payment.completedAt?.getTime() || 0,
-    cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
+    create_time: Number(payment.paymeCreateTime!),
+    perform_time: Number(payment.paymePerformTime || 0n),
+    cancel_time: Number(payment.paymeCancelTime || 0n),
     transaction: payment.orderNumber.toString(),
     state,
-    reason: null
+    reason: state < 0 ? (payment.paymeCancelReason ?? 5) : null
   }
 }
 
@@ -611,35 +701,28 @@ async function getStatement(params: any) {
   })
 
   const transactions = payments.map(payment => {
-    let state: number
-    switch (payment.status) {
-      case 'PENDING':
-        state = 1
-        break
-      case 'PAID':
-        state = 2
-        break
-      case 'CANCELLED':
-        state = -2
-        break
-      default:
-        state = 0
-    }
+    const state = payment.status === 'CANCELLED'
+      ? (payment.paymePerformTime ? -2 : -1)
+      : payment.status === 'PAID'
+      ? 2
+      : payment.status === 'PENDING'
+      ? 1
+      : 0
 
     return {
       id: payment.paymeId,
-      time: payment.createdAt.getTime(),
+      time: Number(payment.paymeCreateTime!),
       amount: payment.amount,
       account: {
         order_id: payment.orderNumber.toString(),
         user_id: payment.userId
       },
-      create_time: payment.createdAt.getTime(),
-      perform_time: payment.completedAt?.getTime() || 0,
-      cancel_time: payment.status === 'CANCELLED' ? (payment.completedAt?.getTime() || 0) : 0,
+      create_time: Number(payment.paymeCreateTime!),
+      perform_time: Number(payment.paymePerformTime || 0n),
+      cancel_time: Number(payment.paymeCancelTime || 0n),
       transaction: payment.orderNumber.toString(),
       state,
-      reason: null
+      reason: state < 0 ? (payment.paymeCancelReason ?? 5) : null
     }
   })
 

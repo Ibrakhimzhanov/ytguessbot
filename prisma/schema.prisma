@@ -15,6 +15,7 @@ model User {
   phoneNumber String    @map("phone_number") @db.VarChar(20)
   fullName    String    @map("full_name") @db.VarChar(255)
   isPaid      Boolean   @default(false) @map("is_paid")
+  loteryId    Int?      @unique @map("lotery_id")
   language    String    @default("uz") @map("language") @db.VarChar(2)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   lotteryWins Lottery[]
@@ -24,17 +25,22 @@ model User {
 }
 
 model Payment {
-  id          String        @id @default(uuid()) @db.Uuid
-  userId      String        @map("user_id") @db.Uuid
-  orderNumber Int           @default(autoincrement()) @map("order_number")
-  amount      Int
-  currency    String        @default("UZS") @db.VarChar(3)
-  status      PaymentStatus @default(PENDING)
-  paymeId     String?       @map("payme_id") @db.VarChar(255)
-  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  completedAt DateTime?     @map("completed_at") @db.Timestamptz(6)
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  orderNumber      Int           @unique @default(autoincrement()) @map("order_number")
+  amount           Int
+  currency         String        @default("UZS") @db.VarChar(3)
+  status           PaymentStatus @default(PENDING)
+  paymeId          String?       @unique @map("payme_id") @db.VarChar(255)
+  paymeCreateTime  BigInt?       @map("payme_create_time")
+  paymePerformTime BigInt?       @map("payme_perform_time")
+  paymeCancelTime  BigInt?       @map("payme_cancel_time")
+  paymeCancelReason Int?         @map("payme_cancel_reason")
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt      DateTime?     @map("completed_at") @db.Timestamptz(6)
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([status])
   @@map("payments")
 }
 
