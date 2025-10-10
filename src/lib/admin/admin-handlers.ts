@@ -30,14 +30,14 @@ export async function showAdminPanel(ctx: BotContext) {
   const role = getRoleText(telegramId)
   
   const keyboard = Markup.keyboard([
-    ['🗂 Экспорт участников', '📊 Статистика'],
-    ['🔙 Назад в главное меню']
+    ['🗂 Ishtirokchilarni eksport qilish', '📊 Statistika'],
+    ['🔙 Asosiy menyuga qaytish']
   ]).resize()
   
   await ctx.reply(
-    `🔧 Админ-панель\n\n` +
-    `👤 Ваша роль: ${role}\n\n` +
-    `Выберите действие:`,
+    `🔧 Admin panel\n\n` +
+    `👤 Sizning rolingiz: ${role}\n\n` +
+    `Harakatni tanlang:`,
     keyboard
   )
 }

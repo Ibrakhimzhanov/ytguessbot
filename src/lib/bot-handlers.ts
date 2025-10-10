@@ -212,7 +212,7 @@ bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
 })
 
 // "Kontaktlar" tugmasi handleri
-bot.hears('📞 Kontaktlar', async (ctx: BotContext) => {
+bot.hears(['📞 Kontaktlar', '📞 Aloqa'], async (ctx: BotContext) => {
   await ctx.reply(
     '📞 Call Center:\n\n' +
     '☎️ +998781136012\n' +
@@ -585,7 +585,7 @@ bot.hears('🔙 Asosiy menyuga qaytish', async (ctx: BotContext) => {
     const keyboard = Markup.keyboard([
       ['🔧 Admin panel'],
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Aloqa', '📋 Kurs haqida']
+      ['📞 Kontaktlar', '📋 Kurs haqida']
     ]).resize()
     
     await ctx.reply(
@@ -595,7 +595,7 @@ bot.hears('🔙 Asosiy menyuga qaytish', async (ctx: BotContext) => {
   } else {
     const keyboard = Markup.keyboard([
       ['📚 Kursni sotib olish', '💰 To\'lovni tekshirish'],
-      ['📞 Aloqa', '📋 Kurs haqida']
+      ['📞 Kontaktlar', '📋 Kurs haqida']
     ]).resize()
     
     await ctx.reply(

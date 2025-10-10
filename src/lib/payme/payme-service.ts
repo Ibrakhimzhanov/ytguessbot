@@ -25,18 +25,6 @@ export class PaymeService {
   }
 
   /**
-   * Создать PaymeService для тестирования
-   */
-  static createTestInstance(merchantId: string, password: string): PaymeService {
-    return new PaymeService({
-      merchantId,
-      password,
-      endpointUrl: PAYME_ENDPOINTS.TEST,
-      isTest: true
-    })
-  }
-
-  /**
    * Создать PaymeService для продакшена
    */
   static createProductionInstance(merchantId: string, password: string): PaymeService {
@@ -57,9 +45,6 @@ export class PaymeService {
       method,
       params
     }
-
-    console.log(`🔵 Payme API Request: ${method}`, JSON.stringify(request, null, 2))
-
     try {
       const response = await fetch(this.config.endpointUrl, {
         method: 'POST',
@@ -77,7 +62,6 @@ export class PaymeService {
 
       const result: PaymeResponse<T> = await response.json()
       
-      console.log(`🟢 Payme API Response: ${method}`, JSON.stringify(result, null, 2))
 
       if (result.error) {
         throw new PaymeApiError(result.error)
@@ -176,37 +160,7 @@ export class PaymeService {
     })
   }
 
-  // ============ HELPER METHODS ============
 
-  /**
-   * Создать чек для курса
-   */
-  async createCourseReceipt(userId: string, orderNumber: number, coursePrice: number): Promise<{ receipt: Receipt }> {
-    const request: ReceiptCreateRequest = {
-      amount: coursePrice, // уже в тийинах
-      account: {
-        order_id: orderNumber.toString(),
-        user_id: userId
-      },
-      description: 'Оплата онлайн курса по программированию',
-      detail: {
-        receipt_type: 0,
-        items: [
-          {
-            title: 'Онлайн курс по программированию',
-            price: coursePrice,
-            count: 1,
-            code: '06201001001000001', // ИКПУ для образовательных услуг
-            units: 796, // код единицы измерения
-            vat_percent: 12, // НДС 12%
-            package_code: 'SERVICE'
-          }
-        ]
-      }
-    }
-
-    return this.createReceipt(request)
-  }
 }
 
 /**
@@ -242,9 +196,5 @@ export function createPaymeService(): PaymeService {
     throw new Error('PAYME_X_AUTH должен быть в формате merchant_id:password')
   }
 
-  const isTest = process.env.NODE_ENV !== 'production'
-  
-  return isTest 
-    ? PaymeService.createTestInstance(merchantId, password)
-    : PaymeService.createProductionInstance(merchantId, password)
+  return PaymeService.createProductionInstance(merchantId, password)
 }
