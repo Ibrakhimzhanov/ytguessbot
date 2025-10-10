@@ -200,15 +200,37 @@ bot.command('mycourse', async (ctx: BotContext) => {
 
 // Telefon raqamini so'rash handleri
 bot.hears('📚 Kursni sotib olish', async (ctx: BotContext) => {
-  const keyboard = Markup.keyboard([
-    [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
-  ]).resize()
+  const telegramId = ctx.from?.id
+  if (!telegramId) return
 
-  await ctx.reply(
-    'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
-    'Kontaktni ulashish uchun quyidagi tugmani bosing:',
-    keyboard
-  )
+  try {
+    // Kurs allaqachon to'langanligini tekshirish
+    const user = await prisma.user.findUnique({
+      where: { telegramId: BigInt(telegramId) }
+    })
+
+    if (user?.isPaid) {
+      await ctx.reply(
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
+        `🎁 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
+      return
+    }
+
+    const keyboard = Markup.keyboard([
+      [Markup.button.contactRequest('📱 Telefon raqamini ulashish')]
+    ]).resize()
+
+    await ctx.reply(
+      'Kursni sotib olish uchun telefon raqamingiz kerak.\n' +
+      'Kontaktni ulashish uchun quyidagi tugmani bosing:',
+      keyboard
+    )
+  } catch (error) {
+    console.error('Error in buy course handler:', error)
+    await ctx.reply('❌ Xatolik yuz berdi. Keyinroq urinib ko\'ring.')
+  }
 })
 
 // "Kontaktlar" tugmasi handleri
@@ -306,6 +328,15 @@ bot.action('pay_payme', async (ctx: BotContext) => {
 
     if (!user.phoneNumber) {
       await ctx.reply('❌ To\'lov uchun telefon raqamingiz kerak. Iltimos, "📚 Kursni sotib olish" tugmasi orqali kontaktni ulashing')
+      return
+    }
+
+    if (user.isPaid) {
+      await ctx.reply(
+        '✅ Siz kursni 100% to\'ladingiz!\n\n' +
+        `🎁 Sizning lotereya raqamingiz: ${user.loteryId}\n\n` +
+        'Materiallarga kirish uchun /mycourse buyrug\'idan foydalaning.'
+      )
       return
     }
 
