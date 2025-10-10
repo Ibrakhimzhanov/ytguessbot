@@ -176,7 +176,7 @@ bot.command('mycourse', async (ctx: BotContext) => {
     // Kurs materiallarini yuborish
     const keyboard = Markup.inlineKeyboard([
       [Markup.button.url('📄 Kurs', 'https://t.me/+lUQ9hk-_rzw3YzMy')],
-      [Markup.button.url('💬 Yopiq guruhga qo\'shilish', 'https://t.me/support_chat')],
+      [Markup.button.url('💬 Yopiq guruhga qo\'shilish', 'https://t.me/+LfbVBp8V17djMzNi')],
     ])
 
     await ctx.reply(
