@@ -1,6 +1,7 @@
 import { Telegraf, Context, Markup } from 'telegraf'
 import dotenv from 'dotenv'
 import { hasAdminAccess, getRoleText } from './admin/roles'
+import { prisma } from './prisma'
 
 // Загружаем переменные окружения
 dotenv.config()
@@ -16,11 +17,31 @@ if (!process.env.BOT_TOKEN) {
 const bot = new Telegraf<BotContext>(process.env.BOT_TOKEN)
 
 // Настройка бота
-bot.start((ctx) => {
+bot.start(async (ctx) => {
   const telegramId = ctx.from?.id
+  if (!telegramId) return
+
+  try {
+    // Создаем или обновляем пользователя в БД
+    await prisma.user.upsert({
+      where: { telegramId: BigInt(telegramId) },
+      update: {
+        username: ctx.from.username,
+        firstName: ctx.from.first_name,
+      },
+      create: {
+        telegramId: BigInt(telegramId),
+        username: ctx.from.username,
+        firstName: ctx.from.first_name,
+        language: ctx.from.language_code || 'uz',
+      }
+    })
+  } catch (error) {
+    console.error('Error creating/updating user:', error)
+  }
   
   // Проверяем является ли пользователь админом
-  const isAdmin = telegramId ? hasAdminAccess(telegramId) : false
+  const isAdmin = hasAdminAccess(telegramId)
   
   if (isAdmin) {
     const role = getRoleText(telegramId!)
