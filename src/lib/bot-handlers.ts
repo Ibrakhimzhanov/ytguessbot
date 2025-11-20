@@ -17,6 +17,28 @@ console.log('💰 COURSE_PRICE:', COURSE_PRICE, 'tiyin =', (COURSE_PRICE / 100).
 console.log('🏪 PAYME_MERCHANT_ID:', PAYME_MERCHANT_ID)
 console.log('🧪 IS_TEST_MODE:', IS_TEST_MODE)
 
+// Генерация уникального номера лотереи
+async function generateLotteryId(): Promise<number> {
+  let lotteryId: number
+  let isUnique = false
+  
+  while (!isUnique) {
+    // Генерируем случайное число от 100000 до 999999
+    lotteryId = Math.floor(100000 + Math.random() * 900000)
+    
+    // Проверяем уникальность
+    const existing = await prisma.user.findFirst({
+      where: { loteryId: lotteryId }
+    })
+    
+    if (!existing) {
+      isUnique = true
+    }
+  }
+  
+  return lotteryId!
+}
+
 // Buyruqlar va xabarlar handlerlari
 bot.command('buy', async (ctx: BotContext) => {
   const telegramId = ctx.from?.id
@@ -780,6 +802,13 @@ bot.command('admin_confirm_payment', async (ctx: BotContext) => {
       return
     }
 
+    // Генерируем номер лотереи если у пользователя его еще нет
+    let lotteryId = payment.user.loteryId
+    if (!lotteryId) {
+      lotteryId = await generateLotteryId()
+      console.log(`🎁 Generated lottery ID: ${lotteryId} for user ${payment.user.telegramId}`)
+    }
+
     // Подтверждаем платеж
     const now = new Date()
     await prisma.payment.update({
@@ -792,7 +821,10 @@ bot.command('admin_confirm_payment', async (ctx: BotContext) => {
 
     await prisma.user.update({
       where: { id: payment.userId },
-      data: { isPaid: true }
+      data: { 
+        isPaid: true,
+        loteryId: lotteryId
+      }
     })
 
     // Уведомляем пользователя
@@ -802,7 +834,8 @@ bot.command('admin_confirm_payment', async (ctx: BotContext) => {
         `🎉 Tabriklaymiz! To'lovingiz tasdiqlandi!\n\n` +
         `✅ Kursga kirish faollashtirildi\n` +
         `📋 Buyurtma raqami: #${payment.orderNumber}\n` +
-        `💰 Summa: ${(payment.amount / 100).toLocaleString()} so'm\n\n` +
+        `💰 Summa: ${(payment.amount / 100).toLocaleString()} so'm\n` +
+        `🎁 Lotereya raqamingiz: ${lotteryId}\n\n` +
         `📚 Kurs materiallariga kirish uchun /mycourse buyrug'idan foydalaning.\n\n` +
         `🎓 O'qishda omad!`
       )

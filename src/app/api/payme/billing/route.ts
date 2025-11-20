@@ -5,6 +5,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { bot } from '@/lib/telegram'
 
+// Генерация уникального номера лотереи
+async function generateLotteryId(): Promise<number> {
+  let lotteryId: number
+  let isUnique = false
+  
+  while (!isUnique) {
+    // Генерируем случайное число от 100000 до 999999
+    lotteryId = Math.floor(100000 + Math.random() * 900000)
+    
+    // Проверяем уникальность
+    const existing = await prisma.user.findFirst({
+      where: { loteryId: lotteryId }
+    })
+    
+    if (!existing) {
+      isUnique = true
+    }
+  }
+  
+  return lotteryId!
+}
+
 // Merchant API методы, которые может вызывать Payme
 enum MerchantMethod {
   CHECK_PERFORM_TRANSACTION = 'CheckPerformTransaction',
@@ -308,7 +330,7 @@ async function checkPerformTransaction(params: any) {
       code: -31051, 
       message: {
         ru: 'Заказ уже оплачен',
-        uz: 'Buyurtma allaqachon to\'langan',
+        uz: 'Buyurtma to\'langan',
         en: 'Order already paid'
       }
     }
@@ -436,6 +458,13 @@ async function performTransaction(params: any) {
     }
   }
 
+  // Генерируем номер лотереи если у пользователя его еще нет
+  let lotteryId = payment.user.loteryId
+  if (!lotteryId) {
+    lotteryId = await generateLotteryId()
+    console.log(`🎁 Generated lottery ID: ${lotteryId} for user ${payment.user.telegramId}`)
+  }
+
   // Подтверждаем оплату
   const now = new Date()
   await prisma.payment.update({
@@ -449,19 +478,23 @@ async function performTransaction(params: any) {
   // Обновляем статус пользователя
   await prisma.user.update({
     where: { id: payment.userId },
-    data: { isPaid: true }
+    data: { 
+      isPaid: true,
+      loteryId: lotteryId
+    }
   })
 
   // Уведомляем пользователя в Telegram
   try {
     await bot.telegram.sendMessage(
       payment.user.telegramId.toString(),
-      `🎉 Поздравляем! Ваш платеж успешно подтвержден!\n\n` +
-      `✅ Доступ к курсу активирован\n` +
-      `📋 Номер заказа: #${payment.orderNumber}\n` +
-      `💰 Сумма: ${(payment.amount / 100).toLocaleString()} сум\n\n` +
-      `📚 Используйте команду /mycourse для доступа к материалам курса.\n\n` +
-      `🎓 Приятного обучения!`
+      `🎉 Tabriklaymiz! To'lovingiz tasdiqlandi!\n\n` +
+      `✅ Kursga kirish faollashtirildi\n` +
+      `📋 Buyurtma raqami: #${payment.orderNumber}\n` +
+      `💰 Summa: ${(payment.amount / 100).toLocaleString()} so'm\n` +
+      `🎁 Lotereya raqamingiz: ${lotteryId}\n\n` +
+      `📚 Kurs materiallariga kirish uchun /mycourse buyrug'idan foydalaning.\n\n` +
+      `🎓 O'qishda omad!`
     )
   } catch (error) {
     console.error('Failed to notify user via Telegram:', error)
